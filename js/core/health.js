@@ -1,6 +1,17 @@
-// V20.1: explicit runtime health check used before wiring more gameplay.
+// V20.2: explicit runtime and migration health check.
 export function checkFoundation(runtime) {
-  const required = ['loop','registry'];
+  const required = ['bridge', 'migration', 'registry', 'loop'];
   const missing = required.filter(name => !runtime?.get?.(name));
-  return { ok: missing.length === 0, missing, version: runtime?.version || null };
+  const migration = runtime?.get?.('migration');
+  let migrationReadable = false;
+  try {
+    const snapshot = migration?.snapshot?.();
+    migrationReadable = !!snapshot && typeof snapshot === 'object';
+  } catch (_) {}
+  return {
+    ok: missing.length === 0 && migrationReadable,
+    missing,
+    migrationReadable,
+    version: runtime?.version || null
+  };
 }
