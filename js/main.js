@@ -15,9 +15,10 @@ import { bindGameplayCommands } from './ui/actions.js';
 import { createGameAgent } from './agent/game-agent.js';
 import { createDecisionEngine } from './agent/decision-engine.js';
 import { createAutopilot } from './agent/autopilot.js';
+import { createAgentPanel } from './ui/agent-panel.js';
 
 const bus = new EventBus();
-const state = new StateStore(createState({ meta: { runtimeVersion: '20.16.0' } }));
+const state = new StateStore(createState({ meta: { runtimeVersion: '20.17.0' } }));
 const runtime = createRuntime({ bus, state });
 const registry = new SystemRegistry(runtime);
 const loop = new GameLoop();
@@ -42,9 +43,10 @@ loop.add(registry);
 runtime.register('loop', loop);
 
 const uiActions = bindGameplayCommands(commands);
-const api = { runtime, bus, state, loop, migration, save: SaveManager, commands, agent, decisionEngine, autopilot, uiActions, uiBridge: null };
+const api = { runtime, bus, state, loop, migration, save: SaveManager, commands, agent, decisionEngine, autopilot, uiActions, uiBridge: null, agentPanel: null };
 api.uiBridge = createUIStateBridge(runtime);
 window.MyCampGame = Object.freeze(api);
+api.agentPanel = createAgentPanel(agent, decisionEngine, autopilot);
 document.documentElement.dataset.v20Foundation = '1';
 document.documentElement.dataset.v20Migration = 'controlled';
 document.documentElement.dataset.v20Resources = 'migrated-readonly';
@@ -58,6 +60,7 @@ document.documentElement.dataset.v20Commands = 'wired';
 document.documentElement.dataset.v20Agent = '20.16';
 document.documentElement.dataset.v20DecisionEngine = 'bounded';
 document.documentElement.dataset.v20Autopilot = 'disabled-by-default';
+document.documentElement.dataset.v20AgentPanel = 'enabled';
 window.dispatchEvent(new CustomEvent('mycamp:v20-ready', { detail: runtime }));
 
 if (document.readyState === 'complete') loop.start();
