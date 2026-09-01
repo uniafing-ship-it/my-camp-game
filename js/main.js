@@ -9,23 +9,28 @@ import { legacyBridge } from './core/legacy-bridge.js';
 import { createMigrationBridge } from './core/migration-bridge.js';
 import { SaveManager } from './save/save-manager.js';
 import { createUIStateBridge } from './ui/state-bridge.js';
+import { createCommandBus } from './core/commands.js';
+import { registerCommandAdapters } from './core/command-registry.js';
 
 const bus = new EventBus();
-const state = new StateStore(createState({ meta: { runtimeVersion: '20.10.0' } }));
+const state = new StateStore(createState({ meta: { runtimeVersion: '20.11.0' } }));
 const runtime = createRuntime({ bus, state });
 const registry = new SystemRegistry(runtime);
 const loop = new GameLoop();
 const migration = createMigrationBridge(window);
+const commands = createCommandBus(runtime);
 
 runtime.register('bridge', legacyBridge());
 runtime.register('migration', migration);
 for (const [name, system] of Object.entries(createSystems(migration))) runtime.register(name, system);
+registerCommandAdapters(commands, migration);
+runtime.register('commands', commands);
 runtime.register('save', SaveManager);
 runtime.register('registry', registry);
 loop.add(registry);
 runtime.register('loop', loop);
 
-window.MyCampGame = Object.freeze({ runtime, bus, state, loop, migration, save: SaveManager });
+window.MyCampGame = Object.freeze({ runtime, bus, state, loop, migration, save: SaveManager, commands });
 const uiBridge = createUIStateBridge(runtime);
 window.MyCampGame.uiBridge = uiBridge;
 document.documentElement.dataset.v20Foundation = '1';
@@ -37,6 +42,7 @@ document.documentElement.dataset.v20Buildings = 'migrated-readonly';
 document.documentElement.dataset.v20Combat = 'migrated-readonly';
 document.documentElement.dataset.v20World = 'migrated-readonly';
 document.documentElement.dataset.v20Save = 'versioned';
+document.documentElement.dataset.v20Commands = 'guarded';
 window.dispatchEvent(new CustomEvent('mycamp:v20-ready', { detail: runtime }));
 
 if (document.readyState === 'complete') loop.start();
