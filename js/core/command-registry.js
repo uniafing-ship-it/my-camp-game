@@ -1,4 +1,4 @@
-// V20.13: command adapters. Mutations delegate to the existing gameplay authority.
+// V20.14: command adapters. Mutations delegate to the existing gameplay authority.
 export function registerCommandAdapters(commands, migration) {
   commands.register('resources.canAfford', {
     can: costs => migration?.canAfford?.(costs) === true,
