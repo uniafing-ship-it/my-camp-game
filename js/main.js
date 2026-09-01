@@ -16,9 +16,10 @@ import { createGameAgent } from './agent/game-agent.js';
 import { createDecisionEngine } from './agent/decision-engine.js';
 import { createAutopilot } from './agent/autopilot.js';
 import { createAgentPanel } from './ui/agent-panel.js';
+import './ui/agent-panel.css';
 
 const bus = new EventBus();
-const state = new StateStore(createState({ meta: { runtimeVersion: '20.17.0' } }));
+const state = new StateStore(createState({ meta: { runtimeVersion: '20.18.0' } }));
 const runtime = createRuntime({ bus, state });
 const registry = new SystemRegistry(runtime);
 const loop = new GameLoop();
