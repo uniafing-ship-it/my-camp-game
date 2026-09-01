@@ -13,9 +13,10 @@ import { createCommandBus } from './core/commands.js';
 import { registerCommandAdapters } from './core/command-registry.js';
 import { bindGameplayCommands } from './ui/actions.js';
 import { createGameAgent } from './agent/game-agent.js';
+import { createDecisionEngine } from './agent/decision-engine.js';
 
 const bus = new EventBus();
-const state = new StateStore(createState({ meta: { runtimeVersion: '20.14.0' } }));
+const state = new StateStore(createState({ meta: { runtimeVersion: '20.15.0' } }));
 const runtime = createRuntime({ bus, state });
 const registry = new SystemRegistry(runtime);
 const loop = new GameLoop();
@@ -30,12 +31,14 @@ runtime.register('commands', commands);
 runtime.register('save', SaveManager);
 runtime.register('registry', registry);
 const agent = createGameAgent(runtime);
+const decisionEngine = createDecisionEngine(agent);
 runtime.register('agent', agent);
+runtime.register('decisionEngine', decisionEngine);
 loop.add(registry);
 runtime.register('loop', loop);
 
 const uiActions = bindGameplayCommands(commands);
-const api = { runtime, bus, state, loop, migration, save: SaveManager, commands, agent, uiActions, uiBridge: null };
+const api = { runtime, bus, state, loop, migration, save: SaveManager, commands, agent, decisionEngine, uiActions, uiBridge: null };
 window.MyCampGame = Object.freeze(api);
 api.uiBridge = createUIStateBridge(runtime);
 document.documentElement.dataset.v20Foundation = '1';
@@ -48,7 +51,8 @@ document.documentElement.dataset.v20Combat = 'migrated-readonly';
 document.documentElement.dataset.v20World = 'migrated-readonly';
 document.documentElement.dataset.v20Save = 'versioned';
 document.documentElement.dataset.v20Commands = 'wired';
-document.documentElement.dataset.v20Agent = '20.14';
+document.documentElement.dataset.v20Agent = '20.15';
+document.documentElement.dataset.v20DecisionEngine = 'manual';
 window.dispatchEvent(new CustomEvent('mycamp:v20-ready', { detail: runtime }));
 
 if (document.readyState === 'complete') loop.start();
