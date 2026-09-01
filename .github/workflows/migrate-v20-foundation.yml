@@ -1,90 +1,12 @@
-name: Migrate V20 Foundation
+name: Legacy V20 Migration (disabled)
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
-permissions:
-  contents: write
-
+# The repository now uses explicit V20 modules. Automatic monolith rewriting is disabled
+# to prevent duplicate extraction or accidental changes to the production HTML.
 jobs:
-  migrate:
-    if: github.actor != 'github-actions[bot]'
+  disabled:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Migrate monolith safely
-        shell: python
-        run: |
-          from pathlib import Path
-          import re
-
-          root = Path('.')
-          index = root / 'index.html'
-          text = index.read_text(encoding='utf-8')
-
-          if 'js/main.js' in text and 'data-v20-foundation="1"' in text:
-              print('V20 foundation already migrated')
-              raise SystemExit(0)
-
-          (root / 'css').mkdir(exist_ok=True)
-          (root / 'js').mkdir(exist_ok=True)
-          (root / 'js' / 'legacy').mkdir(parents=True, exist_ok=True)
-
-          styles = []
-          def style_repl(m):
-              attrs, body = m.group(1), m.group(2)
-              if 'src=' in attrs.lower():
-                  return m.group(0)
-              styles.append(body)
-              return ''
-
-          text = re.sub(r'<style([^>]*)>([\\s\\S]*?)</style>', style_repl, text, flags=re.I)
-          if styles:
-              css = '\n\n/* --- V20 migrated inline style block --- */\n'.join(styles).strip() + '\n'
-              (root / 'css' / 'game.css').write_text(css, encoding='utf-8')
-              text = text.replace('</head>', '<link rel="stylesheet" href="css/game.css">\\n</head>', 1)
-
-          scripts = []
-          pattern = re.compile(r'<script([^>]*)>([\\s\\S]*?)</script>', re.I)
-          counter = 0
-          first_inline_pos = None
-
-          def script_repl(m):
-              nonlocal counter, first_inline_pos
-              attrs, body = m.group(1), m.group(2)
-              if re.search(r'\\bsrc\\s*=', attrs, re.I):
-                  return m.group(0)
-              if first_inline_pos is None:
-                  first_inline_pos = True
-              counter += 1
-              name = f'inline-{counter:03d}.js'
-              content = '// V20 Foundation: migrated inline script; behavior intentionally preserved.\\n' + body.lstrip()
-              (root / 'js' / 'legacy' / name).write_text(content, encoding='utf-8')
-              scripts.append(name)
-              return f'<script src="js/legacy/{name}"></script>'
-
-          text = pattern.sub(script_repl, text)
-
-          if scripts:
-              marker = '\n<script type="module" src="js/main.js"></script>\n'
-              text = text.replace('</body>', marker + '</body>', 1)
-
-          text = text.replace('<html lang="ru">', '<html lang="ru" data-v20-foundation="1">', 1)
-          index.write_text(text, encoding='utf-8')
-          print(f'Migrated {len(styles)} inline style block(s) and {len(scripts)} inline script block(s)')
-
-      - name: Commit migration
-        run: |
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add index.html css js
-          if git diff --cached --quiet; then
-            echo 'No migration changes needed.'
-          else
-            git commit -m 'refactor: migrate game to V20 foundation structure'
-            git push
-          fi
+      - run: echo "Automatic monolith migration disabled; modular files are maintained explicitly."
