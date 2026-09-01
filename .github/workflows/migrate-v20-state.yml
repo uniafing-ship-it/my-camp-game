@@ -1,0 +1,63 @@
+name: Migrate V20 State Boundary
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  migrate:
+    if: ${{ !contains(github.event.head_commit.message, '[v20-state-boundary]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Expose legacy state boundary
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+          marker = '/* V20 STATE BOUNDARY */'
+          if marker in s:
+              raise SystemExit(0)
+          needle = '/* V19 GAMEPLAY EXPANSION — rigeding patch, runs inside main game closure */\n\n})();'
+          bridge = r'''/* V20 STATE BOUNDARY */
+          // Read-only boundary: V20 modules may observe legacy state without touching DOM.
+          window.MyCampLegacy = Object.freeze({
+            get storage(){ return storage; },
+            get villagers(){ return villagers; },
+            get workers(){ return workers; },
+            get buildings(){ return buildings; },
+            get soldiers(){ return soldiers; },
+            get enemies(){ return enemies; },
+            get nodes(){ return nodes; },
+            get animals(){ return animals; },
+            get bundles(){ return bundles; },
+            get researched(){ return researched; },
+            get relics(){ return relics; },
+            get wave(){ return wave; },
+            get dayT(){ return dayT; },
+            get weather(){ return weather; },
+            get state(){ return state; },
+            get gameSpeed(){ return gameSpeed; },
+            get stats(){ return stats; },
+            save(){ return saveGame(); },
+            build(){ return tryBuild(); },
+            upgrade(){ return tryUpgrade(); },
+            repair(){ return repairByPlayer(); }
+          });
+          ''' + needle
+          if needle not in s:
+              raise SystemExit('V20 insertion point not found')
+          p.write_text(s.replace(needle, bridge, 1), encoding='utf-8')
+          PY
+      - name: Commit migration
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'refactor: expose legacy state boundary [v20-state-boundary]'
+          git push
