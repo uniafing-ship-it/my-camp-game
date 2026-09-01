@@ -1728,6 +1728,31 @@ resize();
 resetGame();
 setT($('playBtn'),hasSave()?'▶  ПРОДОЛЖИТЬ ИГРУ':'▶  НАЧАТЬ ИГРУ');
 requestAnimationFrame(loop);
+/* V20 STATE BOUNDARY */
+// Read-only boundary: V20 modules may observe legacy state without touching DOM.
+window.MyCampLegacy = Object.freeze({
+  get storage(){ return storage; },
+  get villagers(){ return villagers; },
+  get workers(){ return workers; },
+  get buildings(){ return buildings; },
+  get soldiers(){ return soldiers; },
+  get enemies(){ return enemies; },
+  get nodes(){ return nodes; },
+  get animals(){ return animals; },
+  get bundles(){ return bundles; },
+  get researched(){ return researched; },
+  get relics(){ return relics; },
+  get wave(){ return wave; },
+  get dayT(){ return dayT; },
+  get weather(){ return weather; },
+  get state(){ return state; },
+  get gameSpeed(){ return gameSpeed; },
+  get stats(){ return stats; },
+  save(){ return saveGame(); },
+  build(){ return tryBuild(); },
+  upgrade(){ return tryUpgrade(); },
+  repair(){ return repairByPlayer(); }
+});
 /* V19 GAMEPLAY EXPANSION — rigeding patch, runs inside main game closure */
 
 })();
