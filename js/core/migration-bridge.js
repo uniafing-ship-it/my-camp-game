@@ -6,8 +6,15 @@ import { countRoles } from '../systems/villagers.js';
 
 export function createMigrationBridge(source = window) {
   const legacy = () => source.MyCampLegacy || null;
+  const legacyClick = id => {
+    const el = source.document?.getElementById(id);
+    if (!el) return false;
+    const event = new MouseEvent('click', { bubbles: true, cancelable: true, view: source });
+    Object.defineProperty(event, '__v20LegacyPassthrough', { value: true });
+    return el.dispatchEvent(event);
+  };
   return {
-    available() { return !!legacy(); },
+    available() { return !!legacy() || !!source.document; },
     snapshot() {
       return legacy() || readLegacyState(source);
     },
@@ -24,14 +31,21 @@ export function createMigrationBridge(source = window) {
     canAfford(costs) { return ResourcesSystem.canAfford({ resources: this.resources() }, costs); },
     commands: {
       save() { return legacy()?.save?.(); },
-      build() { return legacy()?.build?.(); },
-      upgrade() { return legacy()?.upgrade?.(); },
+      build() { return legacy()?.build?.() ?? legacyClick('buildBtn'); },
+      upgrade() { return legacy()?.upgrade?.() ?? legacyClick('upgradeBtn'); },
       repair() { return legacy()?.repair?.(); },
-      hireWorker() { return legacy()?.hireWorker?.(); },
-      hireFoot() { return legacy()?.hireFoot?.(); },
-      hireHunter() { return legacy()?.hireHunter?.(); },
-      hireDog() { return legacy()?.hireDog?.(); },
-      setOrder(order) { return legacy()?.setOrder?.(order); }
+      hireWorker() { return legacy()?.hireWorker?.() ?? legacyClick('hireWorkerBtn'); },
+      hireFoot() { return legacy()?.hireFoot?.() ?? legacyClick('hireFootBtn'); },
+      hireHunter() { return legacy()?.hireHunter?.() ?? legacyClick('hireHunterBtn'); },
+      hireDog() { return legacy()?.hireDog?.() ?? legacyClick('hireDogBtn'); },
+      setOrder(order) {
+        if (legacy()?.setOrder) return legacy.setOrder(order);
+        const el = source.document?.querySelector(`.ord-btn[data-ord="${CSS.escape(order)}"]`);
+        if (!el) return false;
+        const event = new MouseEvent('click', { bubbles: true, cancelable: true, view: source });
+        Object.defineProperty(event, '__v20LegacyPassthrough', { value: true });
+        return el.dispatchEvent(event);
+      }
     }
   };
 }
