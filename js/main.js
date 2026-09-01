@@ -9,7 +9,7 @@ import { legacyBridge } from './core/legacy-bridge.js';
 import { createMigrationBridge } from './core/migration-bridge.js';
 
 const bus = new EventBus();
-const state = new StateStore(createState({ meta: { runtimeVersion: '20.6.0' } }));
+const state = new StateStore(createState({ meta: { runtimeVersion: '20.7.0' } }));
 const runtime = createRuntime({ bus, state });
 const registry = new SystemRegistry(runtime);
 const loop = new GameLoop();
@@ -28,6 +28,7 @@ document.documentElement.dataset.v20Migration = 'controlled';
 document.documentElement.dataset.v20Resources = 'migrated-readonly';
 document.documentElement.dataset.v20Villagers = 'migrated-readonly';
 document.documentElement.dataset.v20Production = 'migrated-readonly';
+document.documentElement.dataset.v20Buildings = 'migrated-readonly';
 window.dispatchEvent(new CustomEvent('mycamp:v20-ready', { detail: runtime }));
 
 if (document.readyState === 'complete') loop.start();
