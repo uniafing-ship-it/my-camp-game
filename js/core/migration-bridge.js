@@ -1,4 +1,4 @@
-// V20.3: controlled migration bridge.
+// V20.13: controlled migration bridge.
 // The legacy game remains authoritative for mutations during the migration.
 import { readLegacyState, findResourceContainer, findVillagers } from './legacy-state.js';
 import { ResourcesSystem } from '../systems/resources.js';
@@ -26,7 +26,12 @@ export function createMigrationBridge(source = window) {
       save() { return legacy()?.save?.(); },
       build() { return legacy()?.build?.(); },
       upgrade() { return legacy()?.upgrade?.(); },
-      repair() { return legacy()?.repair?.(); }
+      repair() { return legacy()?.repair?.(); },
+      hireWorker() { return legacy()?.hireWorker?.(); },
+      hireFoot() { return legacy()?.hireFoot?.(); },
+      hireHunter() { return legacy()?.hireHunter?.(); },
+      hireDog() { return legacy()?.hireDog?.(); },
+      setOrder(order) { return legacy()?.setOrder?.(order); }
     }
   };
 }
