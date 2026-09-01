@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: [index.html, .github/workflows/apply-v19.yml]
+    paths: [index.html, v19_patch.js, .github/workflows/apply-v19.yml]
 permissions:
   contents: write
 jobs:
@@ -16,10 +16,9 @@ jobs:
         shell: python
         run: |
           from pathlib import Path
-          import base64
           p=Path('index.html')
           s=p.read_text(encoding='utf-8')
-          x=base64.b64decode('LyogVjE5IEdBTUVQTEFZIEVYUEFOU0lPTiDigJQgcmlnZWRpbmcgcGF0Y2gsIHJ1bnMgaW5zaWRlIG1haW4gZ2FtZSBjbG9zdXJlICovCg==').decode('utf-8')
+          x=Path('v19_patch.js').read_text(encoding='utf-8')
           marker='})();\n</script>'
           if 'V19 GAMEPLAY EXPANSION' in s:
             raise SystemExit(0)
