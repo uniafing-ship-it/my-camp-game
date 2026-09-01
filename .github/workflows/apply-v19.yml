@@ -1,36 +1,12 @@
-name: Apply V19 Gameplay Patch
+name: Legacy V19 Patch (disabled)
+
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths: [index.html, v19_patch.js, .github/workflows/apply-v19.yml]
-permissions:
-  contents: write
+
+# V19 is frozen in the current production index.html.
+# New gameplay work must go through the modular V20 codebase.
 jobs:
-  patch:
-    if: "!contains(github.event.head_commit.message, '[v19-patched]')"
+  disabled:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Inject V19 patch
-        shell: python
-        run: |
-          from pathlib import Path
-          p=Path('index.html')
-          s=p.read_text(encoding='utf-8')
-          x=Path('v19_patch.js').read_text(encoding='utf-8')
-          marker='})();\n</script>'
-          if 'V19 GAMEPLAY EXPANSION' in s:
-            raise SystemExit(0)
-          if marker not in s:
-            raise SystemExit('main script marker not found')
-          s=s.replace(marker,x+'\n'+marker,1)
-          p.write_text(s,encoding='utf-8')
-      - name: Commit patch
-        run: |
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add index.html
-          git diff --cached --quiet && exit 0
-          git commit -m 'feat: V19 gameplay expansion [v19-patched]'
-          git push
+      - run: echo "V19 injection workflow disabled; V20 modular migration is authoritative."
