@@ -14,7 +14,7 @@ import { registerCommandAdapters } from './core/command-registry.js';
 import { bindGameplayCommands } from './ui/actions.js';
 
 const bus = new EventBus();
-const state = new StateStore(createState({ meta: { runtimeVersion: '20.12.0' } }));
+const state = new StateStore(createState({ meta: { runtimeVersion: '20.13.0' } }));
 const runtime = createRuntime({ bus, state });
 const registry = new SystemRegistry(runtime);
 const loop = new GameLoop();
