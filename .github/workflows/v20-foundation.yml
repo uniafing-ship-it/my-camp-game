@@ -1,0 +1,47 @@
+name: V20 Foundation Migration
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Split monolith into stable layers
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+          root=Path('.')
+          p=root/'index.html'
+          s=p.read_text(encoding='utf-8')
+          if '<!-- V20 FOUNDATION -->' in s:
+              print('Already migrated')
+              raise SystemExit(0)
+          css=re.findall(r'<style(?:\\s[^>]*)?>(.*?)</style>', s, flags=re.S|re.I)
+          if css:
+              (root/'css').mkdir(exist_ok=True)
+              (root/'css'/'game.css').write_text('\n\n'.join(x.strip() for x in css), encoding='utf-8')
+              s=re.sub(r'<style(?:\\s[^>]*)?>.*?</style>', '', s, count=len(css), flags=re.S|re.I)
+              marker='<link rel="stylesheet" href="./css/game.css">'
+              s=s.replace('</head>', marker+'\n<!-- V20 FOUNDATION -->\n</head>', 1)
+          scripts=[]
+          def take(m):
+              body=m.group(1)
+              if body.strip(): scripts.append(body)
+              return ''
+          s=re.sub(r'<script(?:\\s[^>]*)?>(.*?)</script>', take, s, flags=re.S|re.I)
+          if scripts:
+              (root/'js').mkdir(exist_ok=True)
+              (root/'js'/'game.js').write_text('\n\n'.join(x.strip() for x in scripts), encoding='utf-8')
+              s=s.replace('</body>', '<script src="./js/game.js"></script>\n</body>', 1)
+          p.write_text(s, encoding='utf-8')
+      - name: Commit
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html css/game.css js/game.js
+          git diff --cached --quiet && exit 0
+          git commit -m 'refactor: V20 foundation split CSS and game runtime'
+          git push
