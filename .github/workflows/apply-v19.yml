@@ -1,0 +1,37 @@
+name: Apply V19 Gameplay Patch
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [index.html, .github/workflows/apply-v19.yml]
+permissions:
+  contents: write
+jobs:
+  patch:
+    if: "!contains(github.event.head_commit.message, '[v19-patched]')"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inject V19 patch
+        shell: python
+        run: |
+          from pathlib import Path
+          import base64
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          x=base64.b64decode('LyogVjE5IEdBTUVQTEFZIEVYUEFOU0lPTiDigJQgcmlnZWRpbmcgcGF0Y2gsIHJ1bnMgaW5zaWRlIG1haW4gZ2FtZSBjbG9zdXJlICovCg==').decode('utf-8')
+          marker='})();\n</script>'
+          if 'V19 GAMEPLAY EXPANSION' in s:
+            raise SystemExit(0)
+          if marker not in s:
+            raise SystemExit('main script marker not found')
+          s=s.replace(marker,x+'\n'+marker,1)
+          p.write_text(s,encoding='utf-8')
+      - name: Commit patch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git diff --cached --quiet && exit 0
+          git commit -m 'feat: V19 gameplay expansion [v19-patched]'
+          git push
