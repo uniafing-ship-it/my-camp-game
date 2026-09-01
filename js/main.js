@@ -12,9 +12,10 @@ import { createUIStateBridge } from './ui/state-bridge.js';
 import { createCommandBus } from './core/commands.js';
 import { registerCommandAdapters } from './core/command-registry.js';
 import { bindGameplayCommands } from './ui/actions.js';
+import { createGameAgent } from './agent/game-agent.js';
 
 const bus = new EventBus();
-const state = new StateStore(createState({ meta: { runtimeVersion: '20.13.0' } }));
+const state = new StateStore(createState({ meta: { runtimeVersion: '20.14.0' } }));
 const runtime = createRuntime({ bus, state });
 const registry = new SystemRegistry(runtime);
 const loop = new GameLoop();
@@ -28,11 +29,13 @@ registerCommandAdapters(commands, migration);
 runtime.register('commands', commands);
 runtime.register('save', SaveManager);
 runtime.register('registry', registry);
+const agent = createGameAgent(runtime);
+runtime.register('agent', agent);
 loop.add(registry);
 runtime.register('loop', loop);
 
 const uiActions = bindGameplayCommands(commands);
-const api = { runtime, bus, state, loop, migration, save: SaveManager, commands, uiActions, uiBridge: null };
+const api = { runtime, bus, state, loop, migration, save: SaveManager, commands, agent, uiActions, uiBridge: null };
 window.MyCampGame = Object.freeze(api);
 api.uiBridge = createUIStateBridge(runtime);
 document.documentElement.dataset.v20Foundation = '1';
@@ -45,6 +48,7 @@ document.documentElement.dataset.v20Combat = 'migrated-readonly';
 document.documentElement.dataset.v20World = 'migrated-readonly';
 document.documentElement.dataset.v20Save = 'versioned';
 document.documentElement.dataset.v20Commands = 'wired';
+document.documentElement.dataset.v20Agent = '20.14';
 window.dispatchEvent(new CustomEvent('mycamp:v20-ready', { detail: runtime }));
 
 if (document.readyState === 'complete') loop.start();
