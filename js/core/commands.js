@@ -1,4 +1,4 @@
-// V20.11: guarded command boundary. Commands do not mutate legacy until explicitly wired.
+// V20.15: guarded command boundary with command introspection.
 export function createCommandBus(runtime) {
   const handlers = new Map();
   return {
@@ -8,6 +8,7 @@ export function createCommandBus(runtime) {
       const handler = handlers.get(name);
       if (!handler?.execute) throw new Error(`Unknown command: ${name}`);
       return handler.execute(payload, runtime);
-    }
+    },
+    list() { return [...handlers.keys()]; }
   };
 }
