@@ -5,6 +5,9 @@ export function bindGameplayCommands(commands) {
     if (!el || el.dataset.v20CommandBound === command) return false;
     el.dataset.v20CommandBound = command;
     el.addEventListener('click', event => {
+      // The migration bridge can intentionally replay the original legacy
+      // click after the command has crossed the new boundary.
+      if (event.__v20LegacyPassthrough) return;
       event.preventDefault();
       event.stopImmediatePropagation();
       try { commands.execute(command, typeof payload === 'function' ? payload(el, event) : payload); }
@@ -27,6 +30,7 @@ export function bindGameplayCommands(commands) {
     if (!order || el.dataset.v20CommandBound === 'workers.order') return;
     el.dataset.v20CommandBound = 'workers.order';
     el.addEventListener('click', event => {
+      if (event.__v20LegacyPassthrough) return;
       event.preventDefault();
       event.stopImmediatePropagation();
       try { commands.execute('workers.order', order); }
