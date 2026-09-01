@@ -7,6 +7,11 @@ export function legacyBridge() {
     upgrade: window.upgradeBuilding || null,
     assignVillager: window.assignVillager || window.setVillagerRole || null,
     startExpedition: window.startExpedition || null,
-    explore: window.explore || window.exploreNode || null
+    explore: window.explore || window.exploreNode || null,
+    hireWorker: window.hireWorker || null,
+    hireFoot: window.hireFoot || null,
+    hireHunter: window.hireHunter || null,
+    hireDog: window.hireDog || null,
+    setOrder: window.setOrder || null
   };
 }
