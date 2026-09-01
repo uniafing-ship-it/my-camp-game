@@ -13,6 +13,10 @@ export function createMigrationBridge(source = window) {
     Object.defineProperty(event, '__v20LegacyPassthrough', { value: true });
     return el.dispatchEvent(event);
   };
+  const invoke = (method, buttonId, ...args) => {
+    const fn = legacy()?.[method];
+    return typeof fn === 'function' ? fn(...args) : legacyClick(buttonId);
+  };
   return {
     available() { return !!legacy() || !!source.document; },
     snapshot() {
@@ -30,17 +34,19 @@ export function createMigrationBridge(source = window) {
     roleCounts() { return countRoles(this.villagers()); },
     canAfford(costs) { return ResourcesSystem.canAfford({ resources: this.resources() }, costs); },
     commands: {
-      save() { return legacy()?.save?.(); },
-      build() { return legacy()?.build?.() ?? legacyClick('buildBtn'); },
-      upgrade() { return legacy()?.upgrade?.() ?? legacyClick('upgradeBtn'); },
-      repair() { return legacy()?.repair?.(); },
-      hireWorker() { return legacy()?.hireWorker?.() ?? legacyClick('hireWorkerBtn'); },
-      hireFoot() { return legacy()?.hireFoot?.() ?? legacyClick('hireFootBtn'); },
-      hireHunter() { return legacy()?.hireHunter?.() ?? legacyClick('hireHunterBtn'); },
-      hireDog() { return legacy()?.hireDog?.() ?? legacyClick('hireDogBtn'); },
+      save() { return invoke('save', null); },
+      build() { return invoke('build', 'buildBtn'); },
+      upgrade() { return invoke('upgrade', 'upgradeBtn'); },
+      repair() { return invoke('repair', null); },
+      hireWorker() { return invoke('hireWorker', 'hireWorkerBtn'); },
+      hireFoot() { return invoke('hireFoot', 'hireFootBtn'); },
+      hireHunter() { return invoke('hireHunter', 'hireHunterBtn'); },
+      hireDog() { return invoke('hireDog', 'hireDogBtn'); },
       setOrder(order) {
-        if (legacy()?.setOrder) return legacy.setOrder(order);
-        const el = source.document?.querySelector(`.ord-btn[data-ord="${CSS.escape(order)}"]`);
+        const fn = legacy()?.setOrder;
+        if (typeof fn === 'function') return fn(order);
+        const buttons = source.document?.querySelectorAll('.ord-btn') || [];
+        const el = Array.from(buttons).find(button => button.dataset.ord === order);
         if (!el) return false;
         const event = new MouseEvent('click', { bubbles: true, cancelable: true, view: source });
         Object.defineProperty(event, '__v20LegacyPassthrough', { value: true });
