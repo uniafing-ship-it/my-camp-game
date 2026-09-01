@@ -1,8 +1,8 @@
 // V20.14: safe game-agent facade.
 // Read operations use normalized state; mutations go through the command bus.
 export function createGameAgent(runtime) {
-  const migration = runtime?.get?.('migration') || runtime?.migration;
-  const commands = runtime?.get?.('commands') || runtime?.commands;
+  const migration = runtime?.get?.('migration');
+  const commands = runtime?.get?.('commands');
 
   const read = () => {
     const resources = migration?.resources?.() || {};
@@ -30,10 +30,10 @@ export function createGameAgent(runtime) {
     execute:exec,
     build:payload=>exec('build',payload),
     upgrade:payload=>exec('upgrade',payload),
-    hireWorker:()=>exec('hireWorker'),
-    hireFoot:()=>exec('hireFoot'),
-    hireHunter:()=>exec('hireHunter'),
-    hireDog:()=>exec('hireDog'),
-    setOrder:order=>exec('setOrder',order)
+    hireWorker:()=>exec('hire.worker'),
+    hireFoot:()=>exec('hire.foot'),
+    hireHunter:()=>exec('hire.hunter'),
+    hireDog:()=>exec('hire.dog'),
+    setOrder:order=>exec('workers.order',order)
   });
 }
