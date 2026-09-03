@@ -80,7 +80,7 @@ function rectsOverlap(a, b) {
   return !(a.right <= b.left || b.right <= a.left || a.bottom <= b.top || b.bottom <= a.top);
 }
 
-test('V20 boots cleanly and adaptive HUD works', async ({ page }) => {
+test('V20 boots cleanly with Stage 4 authority and adaptive HUD', async ({ page }) => {
   const monitor = runtimeMonitor(page);
   await gotoGame(page);
 
@@ -88,6 +88,8 @@ test('V20 boots cleanly and adaptive HUD works', async ({ page }) => {
     frozen: Object.isFrozen(window.MyCampGame),
     foundation: document.documentElement.dataset.v20Foundation,
     stabilization: document.documentElement.dataset.v20Stabilization,
+    authorityMarker: document.documentElement.dataset.v20Authority,
+    resourcesMarker: document.documentElement.dataset.v20Resources,
     commands: window.MyCampGame.commands.list(),
     commandCan: {
       build: window.MyCampGame.commands.can('build'),
@@ -96,8 +98,13 @@ test('V20 boots cleanly and adaptive HUD works', async ({ page }) => {
       hireFoot: window.MyCampGame.commands.can('hire.foot'),
       hireHunter: window.MyCampGame.commands.can('hire.hunter'),
       hireDog: window.MyCampGame.commands.can('hire.dog'),
-      workersOrder: window.MyCampGame.commands.can('workers.order', 'food')
+      workersOrder: window.MyCampGame.commands.can('workers.order', 'food'),
+      resourcesSnapshot: window.MyCampGame.commands.can('resources.snapshot'),
+      authorityStatus: window.MyCampGame.commands.can('authority.status')
     },
+    authority: Boolean(window.MyCampGame.authority),
+    domains: window.MyCampGame.authority?.domains || [],
+    authorityStatus: window.MyCampGame.authority?.status?.() || {},
     uiActions: window.MyCampGame.uiActions,
     agent: Boolean(window.MyCampGame.agent),
     decisionEngine: Boolean(window.MyCampGame.decisionEngine),
@@ -108,11 +115,19 @@ test('V20 boots cleanly and adaptive HUD works', async ({ page }) => {
   expect(boot.frozen).toBe(true);
   expect(boot.foundation).toBe('1');
   expect(boot.stabilization).toBe('20.20');
+  expect(boot.authorityMarker).toBe('domain-v1');
+  expect(boot.resourcesMarker).toBe('authority-v20');
   expect(boot.commands).toEqual(expect.arrayContaining([
-    'resources.canAfford', 'villagers.snapshot', 'buildings.snapshot',
+    'resources.canAfford', 'resources.snapshot', 'authority.status',
+    'villagers.snapshot', 'buildings.snapshot',
     'build', 'upgrade', 'hire.worker', 'hire.foot', 'hire.hunter', 'hire.dog', 'workers.order'
   ]));
   expect(Object.values(boot.commandCan).every(Boolean)).toBe(true);
+  expect(boot.authority).toBe(true);
+  expect(boot.domains).toEqual(expect.arrayContaining([
+    'resources', 'buildings', 'production', 'villagers', 'combat', 'world', 'save', 'ui'
+  ]));
+  expect(Object.values(boot.authorityStatus).every(meta => meta.revision > 0)).toBe(true);
   expect(Object.values(boot.uiActions).every(Boolean)).toBe(true);
   expect(boot.agent && boot.decisionEngine && boot.autopilot && boot.agentPanel).toBe(true);
 
@@ -135,7 +150,7 @@ test('V20 boots cleanly and adaptive HUD works', async ({ page }) => {
   monitor.assertClean();
 });
 
-test('hunter affordability, command routing and save path work', async ({ page }) => {
+test('resource authority, hunter command routing and save path work', async ({ page }) => {
   const monitor = runtimeMonitor(page);
   const seeded = seededUnlockedHunterSave();
   await page.addInitScript(({ key, value }) => localStorage.setItem(key, value), {
@@ -150,22 +165,43 @@ test('hunter affordability, command routing and save path work', async ({ page }
   await expect(hunterButton).toBeDisabled();
   await expect(hunterButton).toHaveClass(/\bno\b/);
 
-  await page.evaluate(() => {
-    window.MyCampLegacy.storage.food = 500;
-    window.MyCampLegacy.storage.wood = 500;
+  const authorityWrite = await page.evaluate(() => {
+    const resources = window.MyCampGame.runtime.get('resources');
+    const written = resources.replace({...resources.snapshot(), food: 500, wood: 500});
+    return {
+      written,
+      canonical: window.MyCampGame.authority.snapshot('resources'),
+      legacy: {...window.MyCampLegacy.storage},
+      meta: window.MyCampGame.authority.status().resources
+    };
   });
-  await expect(hunterButton).toBeEnabled({ timeout: 2_000 });
+  expect(authorityWrite.written.food).toBe(500);
+  expect(authorityWrite.written.wood).toBe(500);
+  expect(authorityWrite.canonical.food).toBe(500);
+  expect(authorityWrite.canonical.wood).toBe(500);
+  expect(authorityWrite.legacy.food).toBe(500);
+  expect(authorityWrite.legacy.wood).toBe(500);
+  expect(authorityWrite.meta.source).toBe('v20-command');
 
+  await expect(hunterButton).toBeEnabled({ timeout: 2_000 });
   await hunterButton.click();
   await page.waitForFunction(() => window.MyCampLegacy.soldiers.some(s => s.kind === 'hunter'));
+  await page.waitForFunction(() => {
+    const r = window.MyCampGame.authority.snapshot('resources');
+    return r.food === 480 && r.wood === 470;
+  });
+
   const hunterState = await page.evaluate(() => ({
     hunters: window.MyCampLegacy.soldiers.filter(s => s.kind === 'hunter').length,
     food: window.MyCampLegacy.storage.food,
-    wood: window.MyCampLegacy.storage.wood
+    wood: window.MyCampLegacy.storage.wood,
+    canonical: window.MyCampGame.commands.execute('resources.snapshot')
   }));
   expect(hunterState.hunters).toBe(1);
   expect(hunterState.food).toBe(480);
   expect(hunterState.wood).toBe(470);
+  expect(hunterState.canonical.food).toBe(480);
+  expect(hunterState.canonical.wood).toBe(470);
 
   await page.evaluate(() => window.MyCampGame.commands.execute('workers.order', 'food'));
   await expect(page.locator('.ord-btn[data-ord="food"]')).toHaveClass(/\bactive\b/);
@@ -176,6 +212,56 @@ test('hunter affordability, command routing and save path work', async ({ page }
   expect(persisted.storage.wood).toBe(470);
   expect(persisted.hunterN).toBe(1);
   expect(persisted.workerOrder).toBe('food');
+  monitor.assertClean();
+});
+
+test('Stage 4 domain projections converge with the legacy simulation driver', async ({ page }) => {
+  const monitor = runtimeMonitor(page);
+  await gotoGame(page);
+  await startGame(page);
+
+  await page.evaluate(() => {
+    const resources = window.MyCampGame.runtime.get('resources');
+    resources.replace({...resources.snapshot(), food: 100, wood: 100});
+    window.MyCampGame.commands.execute('hire.worker');
+  });
+
+  await page.waitForFunction(() => {
+    const status = window.MyCampGame.authority.status();
+    return Object.values(status).every(meta => meta.revision > 0) &&
+      window.MyCampGame.authority.snapshot('villagers').workerCount === window.MyCampLegacy.workers.length;
+  });
+
+  const convergence = await page.evaluate(() => ({
+    resources: window.MyCampGame.authority.snapshot('resources'),
+    legacyResources: {...window.MyCampLegacy.storage},
+    buildings: window.MyCampGame.authority.snapshot('buildings'),
+    legacyBuildingCount: window.MyCampLegacy.buildings.length,
+    villagers: window.MyCampGame.authority.snapshot('villagers'),
+    legacyWorkerCount: window.MyCampLegacy.workers.length,
+    combat: window.MyCampGame.authority.snapshot('combat'),
+    legacySoldierCount: window.MyCampLegacy.soldiers.length,
+    legacyEnemyCount: window.MyCampLegacy.enemies.length,
+    world: window.MyCampGame.authority.snapshot('world'),
+    legacyWorld: {
+      nodes: window.MyCampLegacy.nodes.length,
+      animals: window.MyCampLegacy.animals.length,
+      bundles: window.MyCampLegacy.bundles.length,
+      weather: window.MyCampLegacy.weather,
+      dayT: window.MyCampLegacy.dayT
+    }
+  }));
+
+  expect(convergence.resources).toEqual(convergence.legacyResources);
+  expect(convergence.buildings.count).toBe(convergence.legacyBuildingCount);
+  expect(convergence.villagers.workerCount).toBe(convergence.legacyWorkerCount);
+  expect(convergence.combat.army.soldiers).toBe(convergence.legacySoldierCount);
+  expect(convergence.combat.raid.enemies).toBe(convergence.legacyEnemyCount);
+  expect(convergence.world.nodes).toBe(convergence.legacyWorld.nodes);
+  expect(convergence.world.animals).toBe(convergence.legacyWorld.animals);
+  expect(convergence.world.bundles).toBe(convergence.legacyWorld.bundles);
+  expect(convergence.world.weather).toBe(convergence.legacyWorld.weather);
+  expect(Math.abs(convergence.world.dayT - convergence.legacyWorld.dayT)).toBeLessThan(1);
   monitor.assertClean();
 });
 
