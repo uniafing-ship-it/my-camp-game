@@ -1,8 +1,8 @@
-// V20.16: bounded optional autopilot. Disabled by default.
+// V20.20: bounded optional autopilot with explicit decision-engine dependency. Disabled by default.
 const DEFAULT_INTERVAL = 15000;
 const MIN_RESERVE = Object.freeze({ food: 10, wood: 10, stone: 10, gold: 0 });
 
-export function createAutopilot(agent, options = {}) {
+export function createAutopilot(agent, decisionEngine, options = {}) {
   let enabled = false;
   let timer = null;
   let busy = false;
@@ -21,12 +21,12 @@ export function createAutopilot(agent, options = {}) {
   const tick = () => {
     if (!enabled || busy || !safe()) return {ok:false, reason:'unsafe-or-disabled'};
     busy = true;
-    try { return agent.decisionEngine?.execute?.() || {ok:false, reason:'decision-engine-unavailable'}; }
+    try { return decisionEngine?.execute?.() || {ok:false, reason:'decision-engine-unavailable'}; }
     finally { busy = false; }
   };
 
   return Object.freeze({
-    version: '20.16',
+    version: '20.20',
     enable() { if (enabled) return; enabled = true; timer = setInterval(tick, interval); },
     disable() { enabled = false; if (timer) clearInterval(timer); timer = null; },
     isEnabled() { return enabled; },
