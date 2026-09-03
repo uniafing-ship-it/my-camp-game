@@ -7,12 +7,15 @@ const root = resolve('.');
 const read = rel => readFileSync(join(root, rel), 'utf8');
 const index = read('index.html');
 const main = read('js/main.js');
+const autopilot = read('js/agent/autopilot.js');
 const vercel = JSON.parse(read('vercel.json'));
 
 const checks = new Map([
   ['agent panel CSS is linked from HTML', index.includes('<link rel="stylesheet" href="./js/ui/agent-panel.css">')],
   ['agent panel CSS is not imported as JavaScript', !main.includes("import './ui/agent-panel.css'")],
   ['V20 API is frozen only after agent panel creation', main.indexOf('api.agentPanel=createAgentPanel') > -1 && main.indexOf('api.agentPanel=createAgentPanel') < main.indexOf('window.MyCampGame=Object.freeze(api)')],
+  ['frozen game agent is not mutated after creation', !main.includes('agent.decisionEngine=')],
+  ['autopilot receives decision engine explicitly', main.includes('createAutopilot(agent,decisionEngine)') && autopilot.includes('createAutopilot(agent, decisionEngine, options = {})') && autopilot.includes('decisionEngine?.execute?.()')],
   ['V20.20 runtime marker exists', main.includes("runtimeVersion:'20.20.0'") && main.includes("dataset.v20Stabilization='20.20'")],
   ['adaptive HUD controller is executable script', index.includes('</script>\n<script>\n/* =========================================================\n   V4 ADAPTIVE HUD CONTROLLER')],
   ['approved first night is 180 seconds', index.includes('const FIRST_NIGHT_AT=180;')],
