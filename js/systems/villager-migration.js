@@ -1,20 +1,23 @@
-// V20.5: canonical villager projection. Mutations remain in legacy until cut-over.
+// Stage 4: canonical villager projection published by DomainAuthority.
 import { normalizeVillager, countRoles, VILLAGER_ROLES } from './villagers.js';
 
-export function createVillagerMigration(bridge) {
+export function createVillagerMigration(bridge, authority) {
+  const project = (at = Date.now(), source = 'legacy-driver') => {
+    const raw = bridge?.villagers?.() || [];
+    const list = Array.isArray(raw) ? raw.map((v, index) => normalizeVillager(v, index)) : [];
+    const value = {
+      list,
+      roleCounts: countRoles(list),
+      roles: VILLAGER_ROLES,
+      at
+    };
+    return authority?.commit?.('villagers', value, { source, at }) || value;
+  };
+
   return {
     name: 'villager-migration',
-    update(_dt, now, runtime) {
-      const source = bridge?.villagers?.() || [];
-      const list = Array.isArray(source) ? source.map(normalizeVillager) : [];
-      runtime.state.set('villagers.list', list);
-      runtime.state.set('villagers.roleCounts', countRoles(list));
-      runtime.state.set('villagers.roles', VILLAGER_ROLES);
-      runtime.state.set('villagers.at', now ?? Date.now());
-    },
-    snapshot() {
-      const source = bridge?.villagers?.() || [];
-      return Array.isArray(source) ? source.map(normalizeVillager) : [];
-    }
+    update(_dt, now) { project(now ?? Date.now()); },
+    refresh(source = 'legacy-driver') { return project(Date.now(), source); },
+    snapshot() { return authority?.snapshot?.('villagers') || project(); }
   };
 }
