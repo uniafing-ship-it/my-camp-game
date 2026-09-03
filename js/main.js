@@ -19,7 +19,7 @@ import { createAutopilot } from './agent/autopilot.js';
 import { createAgentPanel } from './ui/agent-panel.js';
 
 const bus=new EventBus();
-const state=new StateStore(createState({meta:{runtimeVersion:'20.21.0'}}));
+const state=new StateStore(createState({meta:{runtimeVersion:'20.22.0'}}));
 const runtime=createRuntime({bus,state});
 const authority=createDomainAuthority(state);
 const registry=new SystemRegistry(runtime);
@@ -44,19 +44,11 @@ runtime.register('autopilot',autopilot);
 loop.add(registry);
 runtime.register('loop',loop);
 
-// Publish every Stage 4 domain before the first frame so API consumers never
-// observe an uninitialized authority snapshot.
-for(const name of ['resources','villagerMigration','productionMigration','buildingMigration','combatMigration','worldMigration']) {
-  runtime.get(name)?.refresh?.('bootstrap');
-}
+for(const name of ['resources','villagerMigration','productionMigration','buildingMigration','combatMigration','worldMigration']) runtime.get(name)?.refresh?.('bootstrap');
 authority.commit('save',{key:SaveManager.key,version:SaveManager.version},{source:'v20-core'});
 
 const uiActions=bindGameplayCommands(commands);
-authority.commit('ui',{
-  commandBindings:Object.keys(uiActions).filter(key=>uiActions[key]),
-  stateBridge:'one-way',
-  adaptiveHud:true
-},{source:'v20-core'});
+authority.commit('ui',{commandBindings:Object.keys(uiActions).filter(key=>uiActions[key]),stateBridge:'one-way',adaptiveHud:true,strategicAgent:'20.22'},{source:'v20-core'});
 
 const api={runtime,bus,state,loop,migration,authority,save:SaveManager,commands,agent,decisionEngine,autopilot,uiActions,uiBridge:null,agentPanel:null};
 api.uiBridge=createUIStateBridge(runtime);
@@ -72,12 +64,11 @@ document.documentElement.dataset.v20Buildings='authority-v20';
 document.documentElement.dataset.v20Combat='authority-v20';
 document.documentElement.dataset.v20World='authority-v20';
 document.documentElement.dataset.v20Save='authority-versioned';
-document.documentElement.dataset.v20Commands='authority-wired';
-document.documentElement.dataset.v20Agent='20.19';
-document.documentElement.dataset.v20DecisionEngine='context-aware';
-document.documentElement.dataset.v20Autopilot='disabled-by-default';
-document.documentElement.dataset.v20AgentPanel='enabled';
+document.documentElement.dataset.v20Commands='strategic-wired';
+document.documentElement.dataset.v20Agent='20.22';
+document.documentElement.dataset.v20DecisionEngine='strategic-planner';
+document.documentElement.dataset.v20Autopilot='action-aware-disabled-by-default';
+document.documentElement.dataset.v20AgentPanel='strategic';
 document.documentElement.dataset.v20Stabilization='20.20';
 window.dispatchEvent(new CustomEvent('mycamp:v20-ready',{detail:runtime}));
-if(document.readyState==='complete') loop.start();
-else window.addEventListener('load',()=>loop.start(),{once:true});
+if(document.readyState==='complete') loop.start();else window.addEventListener('load',()=>loop.start(),{once:true});
