@@ -1,5 +1,32 @@
-// V20.19: context-aware deterministic decision engine.
-const ORDER_PRIORITY = Object.freeze(['food','wood','stone','gold']);
-function scoreNeed(resources={},key){const value=Number(resources[key]??0);const cap=Number(resources[`${key}Max`]??resources.max??100);if(!Number.isFinite(value)||!Number.isFinite(cap)||cap<=0)return 0;return Math.max(0,Math.min(1,1-value/cap));}
-function contextOf(state={}){const combat=state.combat||{};const raid=combat.raid||state.raid||{};const world=state.world||{};return {raidPhase:raid.phase||'idle',wave:Number(raid.wave||0),night:Number(state.night?.number??state.night?.index??state.day?.night??0),nightIn:Number(state.night?.timeToNight??state.night?.remaining??Infinity),worldReady:Array.isArray(world.nodes),expeditions:Array.isArray(world.expeditions)?world.expeditions.length:0};}
-export function createDecisionEngine(agent){let lastAction=null,lastAt=0;const cooldown=10000;return Object.freeze({version:'20.19',evaluate(){const state=agent.state();const resources=state.resources||{};const context=contextOf(state);const needs=ORDER_PRIORITY.map(key=>({key,score:scoreNeed(resources,key)})).sort((a,b)=>b.score-a.score);const top=needs[0]||{key:'food',score:0};let action={type:'observe',reason:'no-urgent-need',score:top.score};if(['warning','active','boss'].includes(context.raidPhase))action={type:'observe',reason:`raid-${context.raidPhase}`,score:1};else if(Number.isFinite(context.nightIn)&&context.nightIn<=30)action={type:'observe',reason:'night-soon',score:1};else if(top.score>=0.75)action={type:'workers.order',value:top.key,reason:`low-${top.key}`,score:top.score};else if(context.expeditions===0&&context.worldReady)action={type:'observe',reason:'no-expedition',score:.5};return {action,needs,context,state};},plan(){return this.evaluate().action;},execute(){const now=Date.now();if(now-lastAt<cooldown)return{ok:false,reason:'cooldown'};const action=this.plan();if(action.type!=='workers.order')return{ok:false,action,reason:'no-action'};if(lastAction===action.value&&now-lastAt<cooldown*3)return{ok:false,action,reason:'duplicate-action'};const result=agent.setOrder(action.value);if(result?.ok){lastAction=action.value;lastAt=now;}return result;}});}
+// Stage 5 / V20.22: deterministic multi-action decision engine.
+import { createStrategyPlanner } from './strategy-planner.js';
+
+export function createDecisionEngine(agent){
+  const planner=createStrategyPlanner();
+  const lastBySignature=new Map();
+  const cooldown=8000;
+  const duplicateCooldown=20000;
+  const signature=a=>`${a?.type||'observe'}:${a?.value??''}`;
+
+  const evaluate=()=>planner.plan(agent.state());
+  const execute=actionOverride=>{
+    const plan=evaluate();
+    const action=actionOverride||plan.action;
+    if(!action||action.type==='observe')return{ok:false,action,plan,reason:'no-action'};
+    const now=Date.now();const sig=signature(action);const last=lastBySignature.get(sig)||0;
+    const limit=action.type==='workers.order'?duplicateCooldown:cooldown;
+    if(now-last<limit)return{ok:false,action,plan,reason:'cooldown'};
+    const payload=Object.prototype.hasOwnProperty.call(action,'value')?action.value:undefined;
+    const result=agent.execute(action.type,payload);
+    if(result?.ok)lastBySignature.set(sig,now);
+    return{...result,action,plan};
+  };
+
+  return Object.freeze({
+    version:'20.22',evaluate,
+    plan(){return evaluate().action;},
+    strategy(){return evaluate();},
+    execute,
+    cooldowns(){return Object.fromEntries([...lastBySignature.entries()]);}
+  });
+}

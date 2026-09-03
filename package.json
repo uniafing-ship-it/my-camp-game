@@ -1,10 +1,10 @@
 {
   "name": "my-camp-game",
   "private": true,
-  "version": "20.21.0",
+  "version": "20.22.0",
   "type": "module",
   "scripts": {
-    "qa:static": "node tests/static-check.mjs",
+    "qa:static": "node tests/static-check.mjs && node tests/agent-static.mjs",
     "qa:browser": "playwright test",
     "qa": "npm run qa:static && npm run qa:browser"
   },
