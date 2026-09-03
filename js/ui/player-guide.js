@@ -6,46 +6,57 @@
 export const STAGE6_QUEST_HINTS = Object.freeze([
   Object.freeze({
     match: 'Сдай на склад 30',
-    hint: 'Подойди к деревьям — сбор идёт автоматически. Затем вернись к складу в центре лагеря, чтобы сдать древесину.'
+    hint: 'Подойди к деревьям — сбор идёт автоматически. Затем вернись к складу в центре лагеря, чтобы сдать древесину.',
+    compact: 'Подойди к деревьям — сбор автоматический. Затем вернись к складу.'
   }),
   Object.freeze({
     match: 'Построй ЛЕСОПИЛКУ',
-    hint: 'Подойди к свободной строительной площадке у лагеря. Когда появится панель строительства, используй кнопку постройки.'
+    hint: 'Подойди к свободной строительной площадке у лагеря. Когда появится панель строительства, используй кнопку постройки.',
+    compact: 'Подойди к строительной площадке и нажми кнопку строительства.'
   }),
   Object.freeze({
     match: 'Собери 20 🍓',
-    hint: 'Ищи ягодные кусты или добывай еду охотой. Следи за счётчиком квеста — он показывает засчитанный прогресс.'
+    hint: 'Ищи ягодные кусты или добывай еду охотой. Следи за счётчиком квеста — он показывает засчитанный прогресс.',
+    compact: 'Собирай ягодные кусты или добывай еду охотой.'
   }),
   Object.freeze({
     match: 'Убей медведя',
-    hint: 'Ищи медведя за пределами лагеря. После победы счётчик квеста обновится автоматически.'
+    hint: 'Ищи медведя за пределами лагеря. После победы счётчик квеста обновится автоматически.',
+    compact: 'Найди медведя за пределами лагеря и победи его.'
   }),
   Object.freeze({
     match: 'Найми 2 крестьян',
-    hint: 'Используй кнопку найма крестьянина в панели отряда слева внизу. Если кнопка недоступна — сначала накопи её стоимость.'
+    hint: 'Используй кнопку найма крестьянина в панели отряда слева внизу. Если кнопка недоступна — сначала накопи её стоимость.',
+    compact: 'Найми крестьян в панели отряда слева внизу.'
   }),
   Object.freeze({
     match: 'Убей кабана',
-    hint: 'Ищи кабана вне лагеря. После победы прогресс квеста засчитается автоматически.'
+    hint: 'Ищи кабана вне лагеря. После победы прогресс квеста засчитается автоматически.',
+    compact: 'Найди кабана вне лагеря и победи его.'
   }),
   Object.freeze({
     match: 'Разделай 3 туши',
-    hint: 'После охоты находи оставшиеся туши и разделывай их. Счётчик показывает, сколько уже засчитано.'
+    hint: 'После охоты находи оставшиеся туши и разделывай их. Счётчик показывает, сколько уже засчитано.',
+    compact: 'После охоты находи туши и разделывай их.'
   }),
   Object.freeze({
     match: 'Убей оленя',
-    hint: 'Ищи оленя вне лагеря. После победы прогресс квеста обновится автоматически.'
+    hint: 'Ищи оленя вне лагеря. После победы прогресс квеста обновится автоматически.',
+    compact: 'Найди оленя вне лагеря и победи его.'
   }),
   Object.freeze({
     match: 'Построй ДОМ',
-    hint: 'Подойди к следующей свободной строительной площадке и построй ДОМ, когда появится контекстная панель.'
+    hint: 'Подойди к следующей свободной строительной площадке и построй ДОМ, когда появится контекстная панель.',
+    compact: 'Подойди к свободной площадке и построй ДОМ.'
   })
 ]);
 
-export function questHintFor(text = '') {
+export function questHintFor(text = '', compact = false) {
   const normalized = String(text || '').trim();
   if (!normalized) return '';
-  return STAGE6_QUEST_HINTS.find(item => normalized.includes(item.match))?.hint || '';
+  const item = STAGE6_QUEST_HINTS.find(entry => normalized.includes(entry.match));
+  if (!item) return '';
+  return compact ? (item.compact || item.hint) : item.hint;
 }
 
 function ensureStyle(doc) {
@@ -73,7 +84,7 @@ function ensureStyle(doc) {
     #hud[data-hud-mode="phone-narrow"] #playerGuideHint,
     #hud[data-hud-mode="landscape-phone"] #playerGuideHint {
       font-size:9.5px;
-      line-height:1.18;
+      line-height:1.16;
       margin-top:4px;
       padding-top:4px;
     }
@@ -87,6 +98,8 @@ function ensureStyle(doc) {
 export function createPlayerGuide(source = globalThis.document) {
   let observer = null;
   let started = false;
+  let compactMedia = null;
+  let compactListener = null;
 
   const elements = () => ({
     box: source?.getElementById?.('questBox') || null,
@@ -108,14 +121,23 @@ export function createPlayerGuide(source = globalThis.document) {
     return node;
   };
 
+  const isCompact = () => {
+    const win = source?.defaultView;
+    if (!win) return false;
+    if (compactMedia) return compactMedia.matches;
+    return (win.innerWidth || 9999) <= 760;
+  };
+
   const refresh = () => {
     const node = ensureHint();
     const { quest } = elements();
     if (!node || !quest) return '';
-    const hint = questHintFor(quest.textContent);
+    const compact = isCompact();
+    const hint = questHintFor(quest.textContent, compact);
     node.textContent = hint;
     node.classList.toggle('on', Boolean(hint));
     node.dataset.active = hint ? 'true' : 'false';
+    node.dataset.compact = compact ? 'true' : 'false';
     return hint;
   };
 
@@ -124,6 +146,10 @@ export function createPlayerGuide(source = globalThis.document) {
     const { quest } = elements();
     if (!quest) return false;
     started = true;
+    const win = source.defaultView;
+    compactMedia = typeof win?.matchMedia === 'function' ? win.matchMedia('(max-width: 760px)') : null;
+    compactListener = () => refresh();
+    compactMedia?.addEventListener?.('change', compactListener);
     refresh();
     const Observer = source.defaultView?.MutationObserver || globalThis.MutationObserver;
     if (typeof Observer === 'function') {
@@ -136,6 +162,9 @@ export function createPlayerGuide(source = globalThis.document) {
   const stop = () => {
     observer?.disconnect?.();
     observer = null;
+    compactMedia?.removeEventListener?.('change', compactListener);
+    compactMedia = null;
+    compactListener = null;
     started = false;
   };
 
