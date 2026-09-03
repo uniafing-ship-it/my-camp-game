@@ -218,7 +218,16 @@ test('night cadence and reload do not duplicate a wave', async ({ page }) => {
   await page.waitForTimeout(1_200);
   expect(await page.evaluate(() => window.MyCampLegacy.wave)).toBe(1);
 
-  await page.waitForFunction(() => window.MyCampLegacy.wave === 2, null, { timeout: 12_000 });
+  await page.waitForFunction(
+    () => {
+      const label = document.getElementById('dayVal')?.textContent || '';
+      return window.MyCampLegacy.wave === 2 &&
+        window.MyCampLegacy.dayT >= 270 &&
+        label.includes('НОЧЬ');
+    },
+    null,
+    { timeout: 12_000 }
+  );
   const secondNight = await page.evaluate(() => ({
     wave: window.MyCampLegacy.wave,
     dayT: window.MyCampLegacy.dayT,
