@@ -8,13 +8,14 @@ export const VILLAGER_ROLES = Object.freeze({
   farmer: {name:'Фермер', icon:'🌾', production:1.10}
 });
 
-export function normalizeVillager(v = {}) {
+export function normalizeVillager(v = {}, index = 0) {
   const role = VILLAGER_ROLES[v.role] ? v.role : 'worker';
-  return {id: v.id ?? `villager_${Math.random().toString(36).slice(2,8)}`, role, assigned: v.assigned !== false, ...v};
+  const id = v.id ?? `legacy-villager-${index}`;
+  return {id, role, assigned: v.assigned !== false, ...v};
 }
 
 export function countRoles(villagers = []) {
-  return villagers.map(normalizeVillager).reduce((acc, v) => {
+  return villagers.map((v, index) => normalizeVillager(v, index)).reduce((acc, v) => {
     acc[v.role] = (acc[v.role] || 0) + 1;
     return acc;
   }, {});
@@ -22,5 +23,8 @@ export function countRoles(villagers = []) {
 
 export function assignRole(villagers, id, role) {
   if (!VILLAGER_ROLES[role]) return villagers;
-  return villagers.map(v => v.id === id ? {...normalizeVillager(v), role} : normalizeVillager(v));
+  return villagers.map((v, index) => {
+    const normalized = normalizeVillager(v, index);
+    return normalized.id === id ? {...normalized, role} : normalized;
+  });
 }

@@ -1,6 +1,6 @@
 export function createRuntime({ bus, state }) {
   const runtime = {
-    version: '20.1.0',
+    version: '20.21.0',
     bus,
     state,
     startedAt: Date.now(),

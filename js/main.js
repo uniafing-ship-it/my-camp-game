@@ -2,6 +2,7 @@ import { EventBus } from './core/event-bus.js';
 import { StateStore } from './core/state-store.js';
 import { createState } from './core/state.js';
 import { createRuntime } from './core/runtime.js';
+import { createDomainAuthority } from './core/domain-authority.js';
 import { GameLoop } from './core/game-loop.js';
 import { SystemRegistry } from './systems/registry.js';
 import { createSystems } from './systems/index.js';
@@ -18,8 +19,9 @@ import { createAutopilot } from './agent/autopilot.js';
 import { createAgentPanel } from './ui/agent-panel.js';
 
 const bus=new EventBus();
-const state=new StateStore(createState({meta:{runtimeVersion:'20.20.0'}}));
+const state=new StateStore(createState({meta:{runtimeVersion:'20.21.0'}}));
 const runtime=createRuntime({bus,state});
+const authority=createDomainAuthority(state);
 const registry=new SystemRegistry(runtime);
 const loop=new GameLoop();
 const migration=createMigrationBridge(window);
@@ -27,8 +29,9 @@ const commands=createCommandBus(runtime);
 
 runtime.register('bridge',legacyBridge());
 runtime.register('migration',migration);
-for(const [name,system] of Object.entries(createSystems(migration))) runtime.register(name,system);
-registerCommandAdapters(commands,migration);
+runtime.register('authority',authority);
+for(const [name,system] of Object.entries(createSystems(migration,authority))) runtime.register(name,system);
+registerCommandAdapters(commands,migration,runtime,authority);
 runtime.register('commands',commands);
 runtime.register('save',SaveManager);
 runtime.register('registry',registry);
@@ -41,21 +44,35 @@ runtime.register('autopilot',autopilot);
 loop.add(registry);
 runtime.register('loop',loop);
 
+// Publish every Stage 4 domain before the first frame so API consumers never
+// observe an uninitialized authority snapshot.
+for(const name of ['resources','villagerMigration','productionMigration','buildingMigration','combatMigration','worldMigration']) {
+  runtime.get(name)?.refresh?.('bootstrap');
+}
+authority.commit('save',{key:SaveManager.key,version:SaveManager.version},{source:'v20-core'});
+
 const uiActions=bindGameplayCommands(commands);
-const api={runtime,bus,state,loop,migration,save:SaveManager,commands,agent,decisionEngine,autopilot,uiActions,uiBridge:null,agentPanel:null};
+authority.commit('ui',{
+  commandBindings:Object.keys(uiActions).filter(key=>uiActions[key]),
+  stateBridge:'one-way',
+  adaptiveHud:true
+},{source:'v20-core'});
+
+const api={runtime,bus,state,loop,migration,authority,save:SaveManager,commands,agent,decisionEngine,autopilot,uiActions,uiBridge:null,agentPanel:null};
 api.uiBridge=createUIStateBridge(runtime);
 api.agentPanel=createAgentPanel(agent,decisionEngine,autopilot);
 window.MyCampGame=Object.freeze(api);
 document.documentElement.dataset.v20Foundation='1';
-document.documentElement.dataset.v20Migration='controlled';
-document.documentElement.dataset.v20Resources='migrated-readonly';
-document.documentElement.dataset.v20Villagers='migrated-readonly';
-document.documentElement.dataset.v20Production='migrated-readonly';
-document.documentElement.dataset.v20Buildings='migrated-readonly';
-document.documentElement.dataset.v20Combat='migrated-readonly';
-document.documentElement.dataset.v20World='migrated-readonly';
-document.documentElement.dataset.v20Save='versioned';
-document.documentElement.dataset.v20Commands='wired';
+document.documentElement.dataset.v20Migration='domain-authority';
+document.documentElement.dataset.v20Authority='domain-v1';
+document.documentElement.dataset.v20Resources='authority-v20';
+document.documentElement.dataset.v20Villagers='authority-v20';
+document.documentElement.dataset.v20Production='authority-v20';
+document.documentElement.dataset.v20Buildings='authority-v20';
+document.documentElement.dataset.v20Combat='authority-v20';
+document.documentElement.dataset.v20World='authority-v20';
+document.documentElement.dataset.v20Save='authority-versioned';
+document.documentElement.dataset.v20Commands='authority-wired';
 document.documentElement.dataset.v20Agent='20.19';
 document.documentElement.dataset.v20DecisionEngine='context-aware';
 document.documentElement.dataset.v20Autopilot='disabled-by-default';

@@ -1,4 +1,4 @@
-// V20.9: migrated systems are registered in one place.
+// Stage 4: migrated systems publish through one DomainAuthority boundary.
 import { createResourcesSystem } from './resources.js';
 import { ProductionSystem } from './production.js';
 import { VILLAGER_ROLES, countRoles } from './villagers.js';
@@ -11,15 +11,15 @@ import { buildingHealthRatio, needsRepair, repairBuilding, upgradeBuilding } fro
 import { RAID_PHASES, getRaidPhase } from './raids.js';
 import { LegacyStateSync } from './state-sync.js';
 
-export function createSystems(migration) {
+export function createSystems(migration, authority) {
   return Object.freeze({
     stateSync: LegacyStateSync,
-    resources: createResourcesSystem(migration),
-    villagerMigration: createVillagerMigration(migration),
-    productionMigration: createProductionMigration(migration),
-    buildingMigration: createBuildingMigration(migration),
-    combatMigration: createCombatMigration(migration),
-    worldMigration: createWorldMigration(migration),
+    resources: createResourcesSystem(migration, authority),
+    villagerMigration: createVillagerMigration(migration, authority),
+    productionMigration: createProductionMigration(migration, authority),
+    buildingMigration: createBuildingMigration(migration, authority),
+    combatMigration: createCombatMigration(migration, authority),
+    worldMigration: createWorldMigration(migration, authority),
     production: ProductionSystem,
     villagers: { roles: VILLAGER_ROLES, countRoles },
     buildings: { buildingHealthRatio, needsRepair, repairBuilding, upgradeBuilding },

@@ -1,27 +1,44 @@
-// V20.4: resource system with a read-only legacy view during migration.
+// Stage 4: resources are published through the V20 authority boundary.
+// The legacy storage object remains the simulation backing store until the
+// inline simulation is extracted, but writes from V20 cross one adapter only.
+const safe = value => Math.max(0, Number(value) || 0);
+
 export const ResourcesSystem = {
-  get(snapshot) { return snapshot?.resources || {}; },
-  amount(snapshot, key) { return Number(this.get(snapshot)[key] || 0); },
-  canAfford(snapshot, costs = {}) { return Object.entries(costs).every(([k,v]) => this.amount(snapshot,k) >= Number(v)); },
-  apply(snapshot, delta = {}) {
-    const resources = {...this.get(snapshot)};
-    for (const [key, value] of Object.entries(delta)) resources[key] = Math.max(0, Number(resources[key] || 0) + Number(value || 0));
-    return resources;
+  get(state, key) { return safe(state?.resources?.[key]); },
+  amount(state, key) { return this.get(state, key); },
+  canAfford(state, costs = {}) {
+    return Object.entries(costs || {}).every(([key, amount]) => this.get(state, key) >= safe(amount));
   },
-  snapshot(bridge) {
-    if (!bridge?.available?.()) return {};
-    return {...(bridge.resources?.() || {})};
+  apply(state, delta = {}) {
+    const resources = {...(state?.resources || {})};
+    for (const [key, amount] of Object.entries(delta || {})) resources[key] = safe(resources[key]) + Number(amount || 0);
+    return {...state, resources};
+  },
+  snapshot(source) {
+    const resources = source?.resources?.() || source?.snapshot?.()?.resources || source?.snapshot?.()?.storage || {};
+    return Object.fromEntries(Object.entries(resources).map(([key, value]) => [key, safe(value)]));
   }
 };
 
-export function createResourcesSystem(bridge) {
+export function createResourcesSystem(bridge, authority) {
+  const publish = (source = 'legacy-driver', at = Date.now()) => {
+    const snapshot = ResourcesSystem.snapshot(bridge);
+    return authority?.commit?.('resources', snapshot, { source, at }) || snapshot;
+  };
+
   return {
     name: 'resources',
-    update(dt, now, runtime) {
-      runtime.state.resources = ResourcesSystem.snapshot(bridge);
-      runtime.state.resourcesAt = now ?? Date.now();
+    update(_dt, now) { publish('legacy-driver', now ?? Date.now()); },
+    refresh(source = 'legacy-driver') { return publish(source); },
+    snapshot() { return authority?.snapshot?.('resources') || ResourcesSystem.snapshot(bridge); },
+    canAfford(costs) { return ResourcesSystem.canAfford({ resources: this.snapshot() }, costs); },
+    replace(next = {}) {
+      const written = bridge?.replaceResources?.(next);
+      return written ? publish('v20-command') : null;
     },
-    get(key) { return ResourcesSystem.amount({resources: ResourcesSystem.snapshot(bridge)}, key); },
-    canAfford(costs) { return bridge?.canAfford?.(costs) ?? false; }
+    apply(delta = {}) {
+      const written = bridge?.applyResourceDelta?.(delta);
+      return written ? publish('v20-command') : null;
+    }
   };
 }
