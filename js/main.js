@@ -17,9 +17,10 @@ import { createGameAgent } from './agent/game-agent.js';
 import { createDecisionEngine } from './agent/decision-engine.js';
 import { createAutopilot } from './agent/autopilot.js';
 import { createAgentPanel } from './ui/agent-panel.js';
+import { createPlayerGuide } from './ui/player-guide.js';
 
 const bus=new EventBus();
-const state=new StateStore(createState({meta:{runtimeVersion:'20.22.0'}}));
+const state=new StateStore(createState({meta:{runtimeVersion:'20.23.0'}}));
 const runtime=createRuntime({bus,state});
 const authority=createDomainAuthority(state);
 const registry=new SystemRegistry(runtime);
@@ -48,11 +49,14 @@ for(const name of ['resources','villagerMigration','productionMigration','buildi
 authority.commit('save',{key:SaveManager.key,version:SaveManager.version},{source:'v20-core'});
 
 const uiActions=bindGameplayCommands(commands);
-authority.commit('ui',{commandBindings:Object.keys(uiActions).filter(key=>uiActions[key]),stateBridge:'one-way',adaptiveHud:true,strategicAgent:'20.22'},{source:'v20-core'});
+authority.commit('ui',{commandBindings:Object.keys(uiActions).filter(key=>uiActions[key]),stateBridge:'one-way',adaptiveHud:true,strategicAgent:'20.22',playerGuidance:'stage6-early-quest-coach'},{source:'v20-core'});
 
-const api={runtime,bus,state,loop,migration,authority,save:SaveManager,commands,agent,decisionEngine,autopilot,uiActions,uiBridge:null,agentPanel:null};
+const api={runtime,bus,state,loop,migration,authority,save:SaveManager,commands,agent,decisionEngine,autopilot,uiActions,uiBridge:null,agentPanel:null,playerGuide:null};
 api.uiBridge=createUIStateBridge(runtime);
 api.agentPanel=createAgentPanel(agent,decisionEngine,autopilot);
+api.playerGuide=createPlayerGuide(document);
+api.playerGuide.start();
+if(document.readyState!=='complete') window.addEventListener('load',()=>api.playerGuide.start(),{once:true});
 window.MyCampGame=Object.freeze(api);
 document.documentElement.dataset.v20Foundation='1';
 document.documentElement.dataset.v20Migration='domain-authority';
@@ -69,6 +73,7 @@ document.documentElement.dataset.v20Agent='20.22';
 document.documentElement.dataset.v20DecisionEngine='strategic-planner';
 document.documentElement.dataset.v20Autopilot='action-aware-disabled-by-default';
 document.documentElement.dataset.v20AgentPanel='strategic';
+document.documentElement.dataset.v20PlayerGuide='stage6-quest-coach-v1';
 document.documentElement.dataset.v20Stabilization='20.20';
 window.dispatchEvent(new CustomEvent('mycamp:v20-ready',{detail:runtime}));
 if(document.readyState==='complete') loop.start();else window.addEventListener('load',()=>loop.start(),{once:true});
