@@ -8,6 +8,11 @@ const read = rel => readFileSync(join(root, rel), 'utf8');
 const index = read('index.html');
 const main = read('js/main.js');
 const autopilot = read('js/agent/autopilot.js');
+const migration = read('js/core/migration-bridge.js');
+const stateSync = read('js/systems/state-sync.js');
+const villagers = read('js/systems/villagers.js');
+const resources = read('js/systems/resources.js');
+const authority = read('js/core/domain-authority.js');
 const vercel = JSON.parse(read('vercel.json'));
 
 const checks = new Map([
@@ -16,7 +21,13 @@ const checks = new Map([
   ['V20 API is frozen only after agent panel creation', main.indexOf('api.agentPanel=createAgentPanel') > -1 && main.indexOf('api.agentPanel=createAgentPanel') < main.indexOf('window.MyCampGame=Object.freeze(api)')],
   ['frozen game agent is not mutated after creation', !main.includes('agent.decisionEngine=')],
   ['autopilot receives decision engine explicitly', main.includes('createAutopilot(agent,decisionEngine)') && autopilot.includes('createAutopilot(agent, decisionEngine, options = {})') && autopilot.includes('decisionEngine?.execute?.()')],
-  ['V20.20 runtime marker exists', main.includes("runtimeVersion:'20.20.0'") && main.includes("dataset.v20Stabilization='20.20'")],
+  ['V20.21 authority runtime keeps V20.20 stabilization marker', main.includes("runtimeVersion:'20.21.0'") && main.includes("dataset.v20Stabilization='20.20'")],
+  ['Stage 4 DomainAuthority exists and is exposed', existsSync(join(root, 'js/core/domain-authority.js')) && main.includes('createDomainAuthority(state)') && main.includes('migration,authority,save:SaveManager')],
+  ['all Stage 4 domains are declared', ['resources','buildings','production','villagers','combat','world','save','ui'].every(domain => authority.includes(`'${domain}'`))],
+  ['legacy read-only dataset markers are retired', !main.includes("migrated-readonly") && main.includes("dataset.v20Authority='domain-v1'")],
+  ['resource writes cross the migration adapter', migration.includes('replaceResources(next = {})') && migration.includes('applyResourceDelta(delta = {})') && resources.includes("publish('v20-command')")],
+  ['state sync no longer duplicates domain writes', !stateSync.includes("state.set('resources'") && !stateSync.includes("state.set('villagers") && !stateSync.includes("state.set('buildings")],
+  ['villager identity is deterministic', villagers.includes('legacy-villager-${index}') && !villagers.includes('Math.random().toString(36)')],
   ['adaptive HUD controller is executable script', index.includes('</script>\n<script>\n/* =========================================================\n   V4 ADAPTIVE HUD CONTROLLER')],
   ['approved first night is 180 seconds', index.includes('const FIRST_NIGHT_AT=180;')],
   ['approved recurring night cycle is 90 seconds', index.includes('const DAY_CYCLE=90,DAY_LEN=60,NIGHT_LEN=30;')],
