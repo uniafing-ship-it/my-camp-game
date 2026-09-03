@@ -8,8 +8,9 @@ Stage 5 is complete only when all of the following are true:
 - Autopilot remains disabled by default.
 - Manual `autopilot.step()` executes exactly one safety-checked action.
 - Low-resource recovery is allowed below spending reserves.
+- Building repair is a real planner action and crosses CommandBus only when normal gameplay context makes repair possible.
 - Research and expeditions cross CommandBus compatibility adapters.
 - Existing gameplay regression tests remain green.
-- Dedicated strategic-agent browser tests are green with retries disabled.
+- Dedicated strategic-agent tests prove workforce growth, recovery, repair planning, research and expeditions.
 - Protected PR QA is green before merge.
 - Post-merge QA is green on the exact `main` SHA deployed to Vercel production.
