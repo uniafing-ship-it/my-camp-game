@@ -715,6 +715,7 @@ html,body{background:#314a38;color:#efe9d6}
 }
 
 </style>
+<link rel="stylesheet" href="./js/ui/agent-panel.css">
 </head>
 <body>
 <canvas id="game"></canvas>
@@ -895,7 +896,7 @@ const GRES=['wood','stone','gold','food'];
 const NODE_DEF={tree:{hp:8,regrow:8,res:'wood',yield:2},rock:{hp:7,regrow:12,res:'stone',yield:1},gold:{hp:9,regrow:16,res:'gold',yield:1},bush:{hp:5,regrow:12,res:'food',yield:1}};
 const ANIMAL_DEF={bear:{hp:20,food:[10,14],pelt:0.6,aggro:80,speed:95,flee:false,xp:6},boar:{hp:12,food:[6,10],pelt:0.4,aggro:50,speed:110,flee:false,xp:4},deer:{hp:8,food:[8,12],pelt:0.3,aggro:0,speed:150,flee:true,xp:3},rabbit:{hp:3,food:[2,4],pelt:0,aggro:0,speed:190,flee:true,xp:1}};
 const FIRST_NIGHT_AT=180; // первая ночь через 3 минуты
-const DAY_CYCLE=120,DAY_LEN=90,NIGHT_LEN=30; // после первой ночи: день 90с + ночь 30с = 120с
+const DAY_CYCLE=90,DAY_LEN=60,NIGHT_LEN=30; // после первой ночи: день 60с + ночь 30с = 90с
 const WAVE_NIGHT_GAP=1; // каждая ночь — новая волна; старт первой ночи через 180с, затем каждые 90с
 const BUILDINGS=[
 {name:'ЛЕСОПИЛКА', cost:{wood:15}, prod:{wood:1.7}, desc:'+1 🌲 каждые 1.7 с'},
@@ -959,7 +960,7 @@ const ACHS=[
 {id:'carc1',n:'Раздельщик',d:'Разделай 10 туш',icon:'🔪',reward:60,check:s=>s.carc>=10},
 {id:'kill1',n:'Охотник на орков',d:'Победи 50 орков',icon:'⚔️',reward:60,check:s=>s.kills>=50},
 {id:'build1',n:'Крепость',d:'Построй 12 зданий',icon:'🏰',reward:80,check:s=>s.built>=12},
-{id:'build2',n:'Метрополия',d:'Построй все 16 зданий',icon:'🏙️',reward:150,check:s=>s.built>=16},
+{id:'build2',n:'Метрополия',d:'Построй все здания',icon:'🏙️',reward:150,check:s=>s.built>=BUILDINGS.length},
 {id:'res1',n:'Учёный',d:'Изучи все 6 технологий',icon:'📖',reward:100,check:s=>s.rs>=6},
 {id:'rel1',n:'Коллекционер',d:'Собери все 6 реликвий',icon:'🏺',reward:120,check:s=>s.rel>=6},
 {id:'hero1',n:'Полубог',d:'Герой 10 уровня',icon:'⭐',reward:100,check:s=>s.hl>=10},
@@ -981,7 +982,7 @@ const QUESTS=[
 {t:'Построй СТОРОЖЕВУЮ БАШНЮ',need:s=>s.tower,p:s=>(s.tower?'✔':'0')+'/1 🏹',r:{stone:100}},
 {t:'Победи 25 орков',need:s=>s.kills>=25,p:s=>Math.min(s.kills,25)+'/25 👹',r:{gold:50}},
 {t:'Сделай 10 улучшений',need:s=>s.upg>=10,p:s=>Math.min(s.upg,10)+'/10 ⭐',r:{gold:150}},
-{t:'Построй все 16 зданий',need:s=>s.built>=16,p:s=>s.built+'/16 🏙️',r:{gold:200}},
+{t:'Построй все здания',need:s=>s.built>=BUILDINGS.length,p:s=>s.built+'/'+BUILDINGS.length+' 🏙️',r:{gold:200}},
 {t:'Победи Вождя орков',need:s=>s.bk>=1,p:s=>Math.min(s.bk,1)+'/1 👹',r:{gold:80}},
 {t:'Прокачай героя до 5 уровня',need:s=>s.hl>=5,p:s=>Math.min(s.hl,5)+'/5 ⭐',r:{gold:100}},
 {t:'Соверши Восхождение',need:s=>s.fame>=1,p:s=>(s.fame>=1?'✔':'0')+'/1 🔥',r:{gold:150}}];
@@ -1140,7 +1141,7 @@ genWorld();
 camX=clamp(player.x-W/2,0,Math.max(0,WORLD-W));camY=clamp(player.y-H/2,0,Math.max(0,WORLD-H));
 document.querySelectorAll('.ord-btn').forEach(b=>b.classList.toggle('active',b.dataset.ord==='auto'));
 }
-function saveGame(){try{localStorage.setItem(SAVE_KEY,JSON.stringify({v:7,storage,built,buildings:buildings.map(b=>({i:b.i,lvl:b.lvl})),wave,kills,bossKills,peltsGot,carcassCount,questIdx,stats,dayT,workersN:workers.filter(w=>!w.busy).length,footN:soldiers.filter(s=>s.kind==='foot'&&!s.busy).length,hunterN:soldiers.filter(s=>s.kind==='hunter'&&!s.busy).length,dogN:soldiers.filter(s=>s.kind==='dog'&&!s.busy).length,hero:{lvl:hero.lvl,xp:hero.xp},researched,relics,achs,windCasts,bundlesCollected,workerOrder,fame,expansions,ts:Date.now()}));}catch(e){}}
+function saveGame(){try{localStorage.setItem(SAVE_KEY,JSON.stringify({v:7,storage,built,buildings:buildings.map(b=>({i:b.i,lvl:b.lvl})),wave,kills,bossKills,peltsGot,carcassCount,questIdx,stats,dayT,nightWaveSpawned,wasNight,workersN:workers.filter(w=>!w.busy).length,footN:soldiers.filter(s=>s.kind==='foot'&&!s.busy).length,hunterN:soldiers.filter(s=>s.kind==='hunter'&&!s.busy).length,dogN:soldiers.filter(s=>s.kind==='dog'&&!s.busy).length,hero:{lvl:hero.lvl,xp:hero.xp},researched,relics,achs,windCasts,bundlesCollected,workerOrder,fame,expansions,ts:Date.now()}));}catch(e){}}
 function applyOffline(sec){const lines=[];for(const b of buildings){const def=BUILDINGS[b.i];if(!def.prod)continue;for(const r in def.prod){const interval=prodInterval(def.prod[r],b.lvl);const amt=Math.floor(sec/interval)*Math.max(1,Math.round(b.lvl*prodMult()));if(amt>0){storage[r]=safe(storage[r])+amt;lines.push('+'+amt+' '+RICON[r]);}}}if(lines.length)showBanner('ПОКА ТЕБЯ НЕ БЫЛО: '+lines.join('  '));}
 function spawnWorkerEntity(){workers.push({x:CX+rnd(-60,60),y:CY+rnd(60,110),state:'idle',target:null,tc:null,rb:null,cargo:{},t:0,walk:rnd(0,6),face:1,busy:false});}
 function spawnVillagers(count){for(let i=0;i<count;i++){villagers.push({x:CX+rnd(-80,80),y:CY+rnd(-50,90),state:'idle',target:null,tc:null,rb:null,cargo:{},t:0,face:Math.random()<0.5?1:-1,walk:rnd(0,6),color:VILL_COLORS[villagers.length%VILL_COLORS.length],busy:false});}}
@@ -1159,8 +1160,9 @@ for(let i=0;i<(d.dogN||0);i++)spawnUnit('dog');
 for(const b of buildings){const def=BUILDINGS[b.i];if(def.pop)spawnVillagers(def.pop+(b.lvl-1));}
 if(d.workerOrder)setOrder(d.workerOrder);
 if(d.ts){const away=Math.min(900,Math.max(0,(Date.now()-d.ts)/1000));if(away>20)applyOffline(away);}
-raidT=180;
-nightWaveSpawned=isNight()?dayNum()-1:-1;
+raidT=isNight()?0:secondsToNextNight();
+wasNight=isNight();
+nightWaveSpawned=Number.isFinite(d.nightWaveSpawned)?d.nightWaveSpawned:(wasNight?dayNum():-1);
 return true;}catch(e){return false;}}
 function hasSave(){try{return !!localStorage.getItem(SAVE_KEY);}catch(e){return false;}}
 function resetProgress(){try{localStorage.removeItem(SAVE_KEY);}catch(e){}fame=0;achs=[];stats={gathered:{wood:0,stone:0,food:0,gold:0},upgrades:0,expCount:0,pG:0,aKills:{bear:0,boar:0,deer:0,rabbit:0},carc:0};resetGame();toMenu();}
@@ -1293,12 +1295,6 @@ function findRepairBuilding(){let best=null,bl=Infinity;for(const b of buildings
 function repairByPlayer(){if(state!=='play')return;let best=null,bd=95;for(const b of buildings){const p=PLOTS[b.i];const d=dist(player.x,player.y,p.x,p.y);if(d<bd){bd=d;best=b;}}if(!best||best.hp>=best.maxHp)return;best.hp=Math.min(best.maxHp,best.hp+12);const p=PLOTS[best.i];burst(p.x+rnd(-10,10),p.y-30,'#b8e29a',10,true);floatText(p.x,p.y-60,'🔧 РЕМОНТ +12','#b8e29a',14);sfx('build');}
 function nearPond(o,rad=125){return dist(o.x,o.y,POND_X,POND_Y)<rad;}
 function fishYield(level=1){return 2+Math.floor(Math.random()*3)+Math.max(0,level-1);}
-function playerFish(){
- if(state!=='play'||(player.fishT||0)>0||!nearPond(player,135))return false;
- player.fishT=2.2;const amt=fishYield(1);addRes('food',amt,true);
- burst(POND_X+rnd(-12,12),POND_Y+rnd(-8,8),'#7dd3fc',12,true);
- floatText(POND_X,POND_Y-55,'+'+amt+' 🍓 РЫБА','#8ee7ff',15);sfx('pick');saveGame();return true;
-}
 function updateGatherer(o,dt,spGo,spBack,interval,cap,canCrit,canRepair){if(o.busy)return;const space=()=>Math.max(0,cap-cargoSum(o));
 if(o.state==='idle'){const c=nearestCarcass(o.x,o.y,700);if(c&&space()>0){o.tc=c;o.state='toCarcass';return;}
 if(canRepair){const rb=findRepairBuilding();if(rb){o.rb=rb;o.state='toRepair';return;}}
@@ -1452,7 +1448,6 @@ $('pauseBtn').addEventListener('click',e=>{e.stopPropagation();togglePause();});
 $('muteBtn').addEventListener('click',e=>{e.stopPropagation();toggleMute();initAudio();});
 buildBtn.addEventListener('click',()=>{tryBuild();initAudio();});
 upgradeBtn.addEventListener('click',()=>{tryUpgrade();initAudio();});
-fishHint.addEventListener('click',()=>{playerFish();initAudio();});
 /* обновление */
 function updatePlayer(dt){fishHint.classList.remove('on');let mx=0,my=0;if(keys.ArrowLeft||keys.KeyA)mx-=1;if(keys.ArrowRight||keys.KeyD)mx+=1;if(keys.ArrowUp||keys.KeyW)my-=1;if(keys.ArrowDown||keys.KeyS)my+=1;if(joy.active){mx+=joy.dx;my+=joy.dy;}const m=Math.hypot(mx,my);if(m>0.01){if(m>1){mx/=m;my/=m;}player.x+=mx*230*dt;player.y+=my*230*dt;if(Math.abs(mx)>0.05)player.face=mx>0?1:-1;player.walk+=dt*(6+m*4);}else{player.walk*=0.8;}player.x=clamp(player.x,26,WORLD-26);player.y=clamp(player.y,26,WORLD-26);}
 function updateCamera(dt){const tx=clamp(player.x-W/2,0,Math.max(0,WORLD-W));const ty=clamp(player.y-H/2,0,Math.max(0,WORLD-H));camX+=(tx-camX)*Math.min(1,dt*6);camY+=(ty-camY)*Math.min(1,dt*6);}
@@ -1757,7 +1752,7 @@ window.MyCampLegacy = Object.freeze({
 
 })();
 </script>
-
+<script>
 /* =========================================================
    V4 ADAPTIVE HUD CONTROLLER
    ========================================================= */
@@ -1868,6 +1863,7 @@ window.MyCampLegacy = Object.freeze({
   setTimeout(schedule, 0);
   setTimeout(schedule, 250);
 })();
+</script>
 
 <script type="module" src="./js/main.js"></script>
 </body>
