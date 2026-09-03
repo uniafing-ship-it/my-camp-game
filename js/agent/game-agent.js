@@ -1,2 +1,40 @@
-// V20.19: normalized agent state projection with world/combat/night context.
-export function createGameAgent(runtime){const migration=runtime?.get?.('migration');const commands=runtime?.get?.('commands');const read=()=>{const s=migration?.snapshot?.()||{};const resources=migration?.resources?.()||{};const villagers=migration?.villagers?.()||[];const buildings=migration?.buildings?.()||[];return{resources:{...resources},villagers:villagers.map(v=>({role:v?.role||v?.kind||'unknown',state:v?.state||'unknown',busy:!!v?.busy})),villagersCount:villagers.length,roleCounts:{...(migration?.roleCounts?.()||{})},buildings:Array.isArray(buildings)?buildings.map(b=>({id:b?.i??b?.id??null,level:b?.lvl??b?.level??1,hp:b?.hp??null,maxHp:b?.maxHp??null})):[],combat:s.combat||{},raid:s.raid||{},night:s.night||{},world:s.world||{},expeditions:s.expeditions||[]};};const exec=(name,payload)=>{if(!commands?.can?.(name,payload))return{ok:false,command:name,reason:'not-available'};try{return{ok:true,command:name,result:commands.execute(name,payload)}}catch(error){return{ok:false,command:name,reason:String(error?.message||error)}}};return Object.freeze({version:'20.19',state:read,can:(name,payload)=>!!commands?.can?.(name,payload),execute:exec,build:p=>exec('build',p),upgrade:p=>exec('upgrade',p),hireWorker:()=>exec('hire.worker'),hireFoot:()=>exec('hire.foot'),hireHunter:()=>exec('hire.hunter'),hireDog:()=>exec('hire.dog'),setOrder:o=>exec('workers.order',o)});}
+// Stage 5 / V20.22: strategic agent reads canonical V20 domains and mutates
+// the game only through CommandBus. Legacy reads are limited to compatibility
+// facts that have not yet been migrated (research/order/actionable context).
+export function createGameAgent(runtime){
+  const authority=runtime?.get?.('authority');
+  const migration=runtime?.get?.('migration');
+  const commands=runtime?.get?.('commands');
+  const domain=name=>authority?.snapshot?.(name)||{};
+  const read=()=>{
+    const resources=domain('resources');
+    const villagers=domain('villagers');
+    const buildings=domain('buildings');
+    const combat=domain('combat');
+    const world=domain('world');
+    const progression={researched:migration?.researched?.()||[]};
+    const compatibility={
+      source:'legacy-readonly',
+      workerOrder:migration?.workerOrder?.()||'auto',
+      actionable:migration?.actionable?.()||{build:false,upgrade:false},
+      expeditionBusy:Number(migration?.expeditionBusy?.()||0)
+    };
+    return{source:'v20-authority',resources,villagers,buildings,combat,world,progression,compatibility};
+  };
+  const exec=(name,payload)=>{
+    if(!commands?.can?.(name,payload))return{ok:false,command:name,reason:'not-available'};
+    try{
+      const result=commands.execute(name,payload);
+      if(result===false||result?.ok===false)return{ok:false,command:name,result,reason:result?.reason||'rejected'};
+      return{ok:true,command:name,result};
+    }catch(error){return{ok:false,command:name,reason:String(error?.message||error)};}
+  };
+  return Object.freeze({
+    version:'20.22',state:read,
+    can:(name,payload)=>!!commands?.can?.(name,payload),execute:exec,
+    build:p=>exec('build',p),upgrade:p=>exec('upgrade',p),repair:()=>exec('repair'),
+    research:id=>exec('research',id),startExpedition:id=>exec('expedition.start',id),
+    hireWorker:()=>exec('hire.worker'),hireFoot:()=>exec('hire.foot'),hireHunter:()=>exec('hire.hunter'),hireDog:()=>exec('hire.dog'),
+    setOrder:o=>exec('workers.order',o),save:()=>exec('save.now')
+  });
+}
