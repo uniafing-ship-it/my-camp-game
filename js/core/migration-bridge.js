@@ -25,6 +25,11 @@ export function createMigrationBridge(source = window) {
     const button = source.document?.getElementById(buttonId);
     return !!panel?.classList?.contains('on') && !!button && !button.disabled && !button.classList.contains('no');
   };
+  const repairActionable = () => {
+    const panel = source.document?.getElementById('upgradePanel');
+    const label = source.document?.getElementById('upName');
+    return !!panel?.classList?.contains('on') && String(label?.textContent || '').includes('🔧');
+  };
   const activeOrder = () => source.document?.querySelector?.('.ord-btn.active')?.dataset?.ord || 'auto';
   const researchViaDom = id => {
     const safeId = String(id || '');
@@ -65,7 +70,13 @@ export function createMigrationBridge(source = window) {
     soldiers() { return legacy()?.soldiers || this.snapshot()?.soldiers || []; },
     researched() { return [...(legacy()?.researched || this.snapshot()?.researched || [])]; },
     workerOrder() { return activeOrder(); },
-    actionable() { return {build:panelActionable('buildPanel','buildBtn'),upgrade:panelActionable('upgradePanel','upgradeBtn')}; },
+    actionable() {
+      return {
+        build: panelActionable('buildPanel','buildBtn'),
+        upgrade: panelActionable('upgradePanel','upgradeBtn'),
+        repair: repairActionable()
+      };
+    },
     expeditionBusy() {
       const workers = legacy()?.workers || this.snapshot()?.workers || [];
       const soldiers = this.soldiers();
