@@ -1,8 +1,11 @@
-// V20.13: controlled migration bridge.
-// The legacy game remains authoritative for mutations during the migration.
+// Stage 4: controlled adapter between the V20 authority boundary and the
+// still-running legacy simulation. DOM replay remains a compatibility path
+// for legacy commands that have not yet been extracted from the inline engine.
 import { readLegacyState, findResourceContainer, findVillagers } from './legacy-state.js';
 import { ResourcesSystem } from '../systems/resources.js';
 import { countRoles } from '../systems/villagers.js';
+
+const safeAmount = value => Math.max(0, Number(value) || 0);
 
 export function createMigrationBridge(source = window) {
   const legacy = () => source.MyCampLegacy || null;
@@ -25,6 +28,21 @@ export function createMigrationBridge(source = window) {
     resources() {
       const l = legacy();
       return l?.storage || findResourceContainer(this.snapshot());
+    },
+    replaceResources(next = {}) {
+      const target = this.resources();
+      if (!target || typeof target !== 'object') return null;
+      const keys = new Set([...Object.keys(target), ...Object.keys(next || {})]);
+      for (const key of keys) target[key] = safeAmount(next?.[key]);
+      return {...target};
+    },
+    applyResourceDelta(delta = {}) {
+      const target = this.resources();
+      if (!target || typeof target !== 'object') return null;
+      for (const [key, value] of Object.entries(delta || {})) {
+        target[key] = safeAmount(safeAmount(target[key]) + Number(value || 0));
+      }
+      return {...target};
     },
     villagers() {
       const l = legacy();
