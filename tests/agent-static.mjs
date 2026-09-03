@@ -22,7 +22,7 @@ const checks=new Map([
   ['repair availability is contextual',migration.includes('repairActionable')&&migration.includes('repair: repairActionable()')],
   ['combat exposes unit composition',combat.includes("foot:count('foot')")&&combat.includes("hunter:count('hunter')")&&combat.includes("dog:count('dog')")],
   ['villagers expose idle/busy worker counts',villagers.includes('busyWorkers')&&villagers.includes('idleWorkers')],
-  ['runtime advertises V20.22 strategic agent',main.includes("runtimeVersion:'20.22.0'")&&main.includes("dataset.v20Agent='20.22'")&&main.includes("dataset.v20DecisionEngine='strategic-planner'")]
+  ['V20.23 runtime preserves the V20.22 strategic agent',main.includes("runtimeVersion:'20.23.0'")&&main.includes("dataset.v20Agent='20.22'")&&main.includes("dataset.v20DecisionEngine='strategic-planner'")]
 ]);
 
 const repairState={
