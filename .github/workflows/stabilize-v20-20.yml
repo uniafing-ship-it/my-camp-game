@@ -1,0 +1,175 @@
+name: V20.20 Stabilization
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/stabilize-v20-20.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  stabilize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Apply V20.20 stabilization fixes
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          root = Path('.')
+          index = root / 'index.html'
+          main = root / 'js' / 'main.js'
+          s = index.read_text(encoding='utf-8')
+          m = main.read_text(encoding='utf-8')
+
+          # P0: browser cannot import plain CSS as a JS module in this static build.
+          m = m.replace("import './ui/agent-panel.css';\n", '')
+
+          # P0: create mutable API members before freezing the API object.
+          old = "api.uiBridge=createUIStateBridge(runtime);\nwindow.MyCampGame=Object.freeze(api);\napi.agentPanel=createAgentPanel(agent,decisionEngine,autopilot);"
+          new = "api.uiBridge=createUIStateBridge(runtime);\napi.agentPanel=createAgentPanel(agent,decisionEngine,autopilot);\nwindow.MyCampGame=Object.freeze(api);"
+          if old in m:
+              m = m.replace(old, new, 1)
+          elif new not in m:
+              raise SystemExit('main.js freeze-order pattern not found')
+
+          m = m.replace("runtimeVersion:'20.19.0'", "runtimeVersion:'20.20.0'")
+          if "dataset.v20Stabilization='20.20'" not in m:
+              anchor = "document.documentElement.dataset.v20AgentPanel='enabled';"
+              if anchor not in m:
+                  raise SystemExit('main.js stabilization dataset anchor not found')
+              m = m.replace(anchor, anchor + "\ndocument.documentElement.dataset.v20Stabilization='20.20';", 1)
+
+          # P0: load the Agent Panel CSS as a stylesheet from HTML.
+          css_link = '<link rel="stylesheet" href="./js/ui/agent-panel.css">'
+          if css_link not in s:
+              s = s.replace('</head>', css_link + '\n</head>', 1)
+
+          # P0: the adaptive HUD controller was plain text outside a script tag.
+          hud_marker = '/* =========================================================\n   V4 ADAPTIVE HUD CONTROLLER'
+          if hud_marker not in s:
+              raise SystemExit('HUD controller marker not found')
+          broken_start = '</script>\n\n' + hud_marker
+          fixed_start = '</script>\n<script>\n' + hud_marker
+          if broken_start in s:
+              s = s.replace(broken_start, fixed_start, 1)
+          elif fixed_start not in s:
+              raise SystemExit('HUD controller start pattern not found')
+
+          module_tag = '<script type="module" src="./js/main.js"></script>'
+          hud_pos = s.index(hud_marker)
+          module_pos = s.index(module_tag, hud_pos)
+          between = s[hud_pos:module_pos]
+          if '</script>' not in between[-80:]:
+              # The controller ends in `})();`; close its script before the module entrypoint.
+              close_pos = s.rfind('})();', hud_pos, module_pos)
+              if close_pos < 0:
+                  raise SystemExit('HUD controller end not found')
+              close_pos += len('})();')
+              s = s[:close_pos] + '\n</script>' + s[close_pos:]
+
+          # P1: approved timing — first night at 180s, then night starts every 90s.
+          old_timing = "const DAY_CYCLE=120,DAY_LEN=90,NIGHT_LEN=30; // после первой ночи: день 90с + ночь 30с = 120с"
+          new_timing = "const DAY_CYCLE=90,DAY_LEN=60,NIGHT_LEN=30; // после первой ночи: день 60с + ночь 30с = 90с"
+          if old_timing in s:
+              s = s.replace(old_timing, new_timing, 1)
+          elif new_timing not in s:
+              raise SystemExit('day/night timing pattern not found')
+
+          # P1: remove hard-coded 16-building completion after the farm became building 17.
+          s = s.replace("{id:'build2',n:'Метрополия',d:'Построй все 16 зданий',icon:'🏙️',reward:150,check:s=>s.built>=16}",
+                        "{id:'build2',n:'Метрополия',d:'Построй все здания',icon:'🏙️',reward:150,check:s=>s.built>=BUILDINGS.length}")
+          s = s.replace("{t:'Построй все 16 зданий',need:s=>s.built>=16,p:s=>s.built+'/16 🏙️',r:{gold:200}}",
+                        "{t:'Построй все здания',need:s=>s.built>=BUILDINGS.length,p:s=>s.built+'/'+BUILDINGS.length+' 🏙️',r:{gold:200}}")
+
+          # P1: remove the old manual fishing path that bypassed carry/storage delivery.
+          s, n = re.subn(r"\nfunction playerFish\(\)\{.*?\n\}\nfunction updateGatherer", "\nfunction updateGatherer", s, count=1, flags=re.S)
+          if n == 0 and 'function playerFish()' in s:
+              raise SystemExit('manual playerFish removal failed')
+          s = s.replace("fishHint.addEventListener('click',()=>{playerFish();initAudio();});\n", '')
+
+          # P1: persist night-wave marker so a reload during night cannot spawn a duplicate wave.
+          if 'stats,dayT,nightWaveSpawned,wasNight,workersN:' not in s:
+              old_save = 'questIdx,stats,dayT,workersN:'
+              if old_save not in s:
+                  raise SystemExit('save payload pattern not found')
+              s = s.replace(old_save, 'questIdx,stats,dayT,nightWaveSpawned,wasNight,workersN:', 1)
+
+          old_load = "raidT=180;\nnightWaveSpawned=isNight()?dayNum()-1:-1;"
+          new_load = "raidT=isNight()?0:secondsToNextNight();\nwasNight=isNight();\nnightWaveSpawned=Number.isFinite(d.nightWaveSpawned)?d.nightWaveSpawned:(wasNight?dayNum():-1);"
+          if old_load in s:
+              s = s.replace(old_load, new_load, 1)
+          elif new_load not in s:
+              raise SystemExit('night load pattern not found')
+
+          index.write_text(s, encoding='utf-8')
+          main.write_text(m, encoding='utf-8')
+
+          report = root / 'V20_20_STABILIZATION.md'
+          report.write_text('''# V20.20 Stabilization\n\nStage 1 stabilization baseline.\n\n## Fixed\n- Adaptive HUD controller executes inside a script tag.\n- Agent panel CSS is loaded by HTML rather than imported as JavaScript.\n- Agent panel is created before the public API object is frozen.\n- Runtime stabilization version is 20.20.\n- First night remains at 180 seconds; subsequent night starts are every 90 seconds (60s day + 30s night).\n- Metropolis achievement/quest uses BUILDINGS.length instead of a hard-coded 16.\n- Legacy manual fishing path was removed; automatic fishing is the single player fishing path.\n- Night-wave marker is persisted to prevent a duplicate wave after reload during night.\n\n## Gate\nThe workflow validates all JS syntax, inline script syntax, V20 boot ordering, HUD script placement, timing constants, dynamic building completion, fishing path removal, save/load night marker, and hunter button affordability/disabled logic before committing.\n''', encoding='utf-8')
+
+      - name: Run stabilization gate
+        shell: python
+        run: |
+          from pathlib import Path
+          import re, subprocess, tempfile
+
+          s = Path('index.html').read_text(encoding='utf-8')
+          m = Path('js/main.js').read_text(encoding='utf-8')
+
+          checks = {
+              'agent-css-import-removed': "import './ui/agent-panel.css'" not in m,
+              'agent-css-link-present': '<link rel="stylesheet" href="./js/ui/agent-panel.css">' in s,
+              'agent-panel-before-freeze': m.find('api.agentPanel=createAgentPanel') < m.find('window.MyCampGame=Object.freeze(api)'),
+              'runtime-v20.20': "runtimeVersion:'20.20.0'" in m and "dataset.v20Stabilization='20.20'" in m,
+              'hud-controller-scripted': '</script>\n<script>\n/* =========================================================\n   V4 ADAPTIVE HUD CONTROLLER' in s,
+              'night-cycle-90': 'const DAY_CYCLE=90,DAY_LEN=60,NIGHT_LEN=30;' in s,
+              'first-night-180': 'const FIRST_NIGHT_AT=180;' in s,
+              'no-hardcoded-16-completion': "s.built>=16" not in s and "/16 🏙️" not in s,
+              'dynamic-building-completion': 's.built>=BUILDINGS.length' in s and "s.built+'/'+BUILDINGS.length+' 🏙️'" in s,
+              'manual-fishing-removed': 'function playerFish()' not in s and 'playerFish();' not in s,
+              'night-marker-saved': 'stats,dayT,nightWaveSpawned,wasNight,workersN:' in s,
+              'night-marker-loaded': 'Number.isFinite(d.nightWaveSpawned)' in s,
+              'hunter-affordability-gate': 'hunterUnaffordable=!canAffordCost(hunterCost)' in s,
+              'hunter-disabled-state': 'hireHunterBtn.disabled=hunterLocked||hunterUnaffordable' in s,
+          }
+          failed = [name for name, ok in checks.items() if not ok]
+          for name, ok in checks.items():
+              print(('PASS ' if ok else 'FAIL ') + name)
+          if failed:
+              raise SystemExit('Stabilization checks failed: ' + ', '.join(failed))
+
+          # Syntax-check every modular JS file as an ES module.
+          for path in sorted(Path('js').rglob('*.js')):
+              data = path.read_text(encoding='utf-8')
+              tmp = Path(tempfile.gettempdir()) / 'my-camp-check.mjs'
+              tmp.write_text(data, encoding='utf-8')
+              subprocess.run(['node', '--check', str(tmp)], check=True)
+              print('PASS syntax', path)
+
+          # Syntax-check every non-empty inline script body.
+          inline = re.findall(r'<script(?:\\s[^>]*)?>(.*?)</script>', s, flags=re.S|re.I)
+          if len(inline) < 2:
+              raise SystemExit('Expected legacy runtime and adaptive HUD inline scripts')
+          for i, body in enumerate(inline, 1):
+              if not body.strip():
+                  continue
+              tmp = Path(tempfile.gettempdir()) / f'my-camp-inline-{i}.js'
+              tmp.write_text(body, encoding='utf-8')
+              subprocess.run(['node', '--check', str(tmp)], check=True)
+              print('PASS inline syntax', i)
+
+      - name: Commit stabilized baseline
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html js/main.js V20_20_STABILIZATION.md
+          git diff --cached --quiet && exit 0
+          git commit -m 'fix: V20.20 stabilization baseline [v20.20-stabilized]'
+          git push
