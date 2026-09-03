@@ -1,4 +1,5 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
   "cleanUrls": true,
   "headers": [
     {
@@ -10,5 +11,6 @@
         }
       ]
     }
-  ]
+  ],
+  "ignoreCommand": "if [ \"$VERCEL_PROJECT_ID\" = \"prj_MOy0bFQpENg7reA6VmEDZ61Fx5Uj\" ]; then echo 'Skipping legacy duplicate Vercel project my-camp-game-zjx4'; exit 0; else exit 1; fi"
 }
