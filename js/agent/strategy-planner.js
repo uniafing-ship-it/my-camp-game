@@ -12,6 +12,7 @@ const amount=(r,k)=>Math.max(0,Number(r?.[k]||0));
 const afford=(r,c={})=>Object.entries(c).every(([k,v])=>amount(r,k)>=Number(v||0));
 const afterReserve=(r,c,reserve)=>Object.entries(c||{}).every(([k,v])=>amount(r,k)-Number(v||0)>=Number(reserve?.[k]||0));
 const hasBuilding=(state,id)=>state.buildings?.list?.some(b=>Number(b.type)===Number(id));
+const healthRatio=b=>{const max=Math.max(1,Number(b?.maxHp||100));return Math.max(0,Math.min(1,Number(b?.hp??max)/max));};
 const nightContext=(dayT=0)=>{const t=Math.max(0,Number(dayT||0));if(t<180)return{isNight:false,number:0,timeToNight:180-t};const phase=(t-180)%90;return{isNight:phase<30,number:Math.floor((t-180)/90)+1,timeToNight:phase<30?0:90-phase};};
 const workerCost=n=>({food:15+n*10,wood:10+n*8});
 const footCost=n=>({food:25+n*12,stone:15+n*10,gold:n*5});
@@ -28,6 +29,9 @@ export function createStrategyPlanner(){
     const night=nightContext(state.world?.dayT||0);
     const researched=state.progression?.researched||[];
     const stage=Math.max(0,Number(buildings.count||0));
+    const repairTarget=(buildings.list||[])
+      .filter(b=>b?.needsRepair===true||healthRatio(b)<.75)
+      .sort((a,b)=>healthRatio(a)-healthRatio(b))[0]||null;
     const targets={
       food:80+wave*8+workers*4,
       wood:90+stage*10,
@@ -40,7 +44,7 @@ export function createStrategyPlanner(){
     const footTarget=Math.min(8,Math.max(1,1+Math.ceil(wave/2)));
     const hunterTarget=hasBuilding(state,3)?Math.min(6,Math.max(1,Math.ceil(Math.max(1,wave)/3))):0;
     const dogTarget=hasBuilding(state,13)?Math.min(4,Math.max(1,Math.ceil(Math.max(1,wave)/4))):0;
-    return{resources,buildings,workers,army,wave,night,researched,targets,reserve,deficits,workerTarget,footTarget,hunterTarget,dogTarget};
+    return{resources,buildings,workers,army,wave,night,researched,repairTarget,targets,reserve,deficits,workerTarget,footTarget,hunterTarget,dogTarget};
   };
 
   const plan=(state={})=>{
@@ -59,6 +63,10 @@ export function createStrategyPlanner(){
     const emergency=a.deficits[0];
     if(a.workers>0&&emergency?.ratio<.28&&currentOrder!==emergency.key){
       add(100,{type:'workers.order',value:emergency.key,reason:`emergency-${emergency.key}`,score:1,risk:'recovery'});
+    }
+
+    if(actionable.repair&&a.repairTarget){
+      add(98,{type:'repair',reason:`repair-building-${a.repairTarget.id}`,score:1-healthRatio(a.repairTarget),risk:'maintenance'});
     }
 
     const preNight=a.night.timeToNight<=30;
@@ -99,7 +107,12 @@ export function createStrategyPlanner(){
     c.sort((x,y)=>y.priority-x.priority);
     const selected=c[0]||{type:'observe',reason:'strategy-balanced',score:0};
     let goal='balanced-growth';
-    if(preNight)goal='prepare-night';else if(a.workers<a.workerTarget)goal='grow-economy';else if(a.buildings.count<17)goal='expand-camp';else if(a.researched.length<RESEARCH.length)goal='advance-research';else goal='sustain-camp';
+    if(a.repairTarget&&actionable.repair)goal='repair-camp';
+    else if(preNight)goal='prepare-night';
+    else if(a.workers<a.workerTarget)goal='grow-economy';
+    else if(a.buildings.count<17)goal='expand-camp';
+    else if(a.researched.length<RESEARCH.length)goal='advance-research';
+    else goal='sustain-camp';
     return{goal,action:selected,analysis:a,candidates:c};
   };
 
