@@ -1,19 +1,26 @@
-// V20.9: canonical projection for map, expeditions and world events.
-const safeArray = value => Array.isArray(value) ? value : [];
+// Stage 4: canonical world projection published by DomainAuthority.
+// Keep this projection lightweight: the legacy engine owns detailed entity
+// simulation until the world loop itself is extracted.
+const length = value => Array.isArray(value) ? value.length : 0;
 
-export function createWorldMigration(bridge) {
+export function createWorldMigration(bridge, authority) {
+  const project = (at = Date.now(), source = 'legacy-driver') => {
+    const s = bridge?.snapshot?.() || {};
+    const value = {
+      nodes: length(s.nodes),
+      animals: length(s.animals),
+      bundles: length(s.bundles),
+      weather: String(s.weather || 'clear'),
+      dayT: Number(s.dayT || 0),
+      at
+    };
+    return authority?.commit?.('world', value, { source, at }) || value;
+  };
+
   return {
     name: 'world-migration',
-    update(_dt, now, runtime) {
-      const s = bridge?.snapshot?.() || {};
-      const map = s.map || {};
-      const expeditions = s.expeditions || {};
-      const events = s.events || {};
-      runtime.state.set('world.nodes', safeArray(s.nodes || map.nodes));
-      runtime.state.set('world.discovered', safeArray(map.discovered || s.discovered));
-      runtime.state.set('world.expeditions', safeArray(expeditions.list || expeditions));
-      runtime.state.set('world.events', safeArray(events.active || events.list || events));
-      runtime.state.set('world.at', now ?? Date.now());
-    }
+    update(_dt, now) { project(now ?? Date.now()); },
+    refresh(source = 'legacy-driver') { return project(Date.now(), source); },
+    snapshot() { return authority?.snapshot?.('world') || project(); }
   };
 }
