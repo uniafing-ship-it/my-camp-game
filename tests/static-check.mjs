@@ -10,7 +10,7 @@ const checks=new Map([
 ['V20 API is frozen only after agent panel creation',main.indexOf('api.agentPanel=createAgentPanel')>-1&&main.indexOf('api.agentPanel=createAgentPanel')<main.indexOf('window.MyCampGame=Object.freeze(api)')],
 ['frozen game agent is not mutated after creation',!main.includes('agent.decisionEngine=')],
 ['autopilot receives decision engine explicitly',main.includes('createAutopilot(agent,decisionEngine)')&&autopilot.includes('createAutopilot(agent,decisionEngine,options={}')&&autopilot.includes('decisionEngine.execute(action)')],
-['V20.22 runtime keeps V20.20 stabilization marker',main.includes("runtimeVersion:'20.22.0'")&&main.includes("dataset.v20Stabilization='20.20'")],
+['V20.23 runtime keeps V20.20 stabilization marker',main.includes("runtimeVersion:'20.23.0'")&&main.includes("dataset.v20Stabilization='20.20'")],
 ['Stage 4 DomainAuthority remains exposed',existsSync(join(root,'js/core/domain-authority.js'))&&main.includes('createDomainAuthority(state)')&&main.includes('migration,authority,save:SaveManager')],
 ['all Stage 4 domains remain declared',['resources','buildings','production','villagers','combat','world','save','ui'].every(domain=>authority.includes(`'${domain}'`))],
 ['legacy read-only dataset markers are retired',!main.includes('migrated-readonly')&&main.includes("dataset.v20Authority='domain-v1'")],
