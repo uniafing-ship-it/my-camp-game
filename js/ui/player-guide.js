@@ -14,7 +14,7 @@ export const STAGE6_QUEST_HINTS = Object.freeze([
   }),
   Object.freeze({
     match: 'Собери 20 🍓',
-    hint: 'Ищи ягодные кусты или добывай еду охотой. Ресурс засчитывается после его доставки в запас лагеря.'
+    hint: 'Ищи ягодные кусты или добывай еду охотой. Следи за счётчиком квеста — он показывает засчитанный прогресс.'
   }),
   Object.freeze({
     match: 'Убей медведя',
@@ -125,8 +125,9 @@ export function createPlayerGuide(source = globalThis.document) {
     if (!quest) return false;
     started = true;
     refresh();
-    if (typeof MutationObserver === 'function') {
-      observer = new MutationObserver(refresh);
+    const Observer = source.defaultView?.MutationObserver || globalThis.MutationObserver;
+    if (typeof Observer === 'function') {
+      observer = new Observer(refresh);
       observer.observe(quest, { childList: true, subtree: true, characterData: true });
     }
     return true;
