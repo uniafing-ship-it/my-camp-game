@@ -1,22 +1,31 @@
-// V20.8: canonical combat/raid projection. Legacy remains authoritative for mutations.
+// Stage 4: canonical combat projection published by DomainAuthority.
 const PHASES = Object.freeze(['idle', 'warning', 'active', 'boss', 'resolved']);
 
-export function createCombatMigration(bridge) {
+export function createCombatMigration(bridge, authority) {
+  const project = (at = Date.now(), source = 'legacy-driver') => {
+    const s = bridge?.snapshot?.() || {};
+    const raid = s.raid || s.raids || {};
+    const enemies = Array.isArray(s.enemies) ? s.enemies : [];
+    const soldiers = Array.isArray(s.soldiers) ? s.soldiers : [];
+    const rawPhase = String(raid.phase || (enemies.length ? 'active' : 'idle')).toLowerCase();
+    const phase = PHASES.includes(rawPhase) ? rawPhase : 'idle';
+    const value = {
+      raid: {
+        phase,
+        wave: Number(raid.wave || s.wave || 0),
+        enemies: enemies.length
+      },
+      army: { soldiers: soldiers.length },
+      at
+    };
+    return authority?.commit?.('combat', value, { source, at }) || value;
+  };
+
   return {
     name: 'combat-migration',
-    update(_dt, now, runtime) {
-      const s = bridge?.snapshot?.() || {};
-      const raid = s.raid || s.raids || {};
-      const enemies = Array.isArray(s.enemies) ? s.enemies : [];
-      const soldiers = Array.isArray(s.soldiers) ? s.soldiers : [];
-      const rawPhase = String(raid.phase || 'idle').toLowerCase();
-      const phase = PHASES.includes(rawPhase) ? rawPhase : 'idle';
-      runtime.state.set('combat.raid.phase', phase);
-      runtime.state.set('combat.raid.wave', Number(raid.wave || s.wave || 0));
-      runtime.state.set('combat.raid.enemies', enemies.length);
-      runtime.state.set('combat.army.soldiers', soldiers.length);
-      runtime.state.set('combat.at', now ?? Date.now());
-    }
+    update(_dt, now) { project(now ?? Date.now()); },
+    refresh(source = 'legacy-driver') { return project(Date.now(), source); },
+    snapshot() { return authority?.snapshot?.('combat') || project(); }
   };
 }
 
