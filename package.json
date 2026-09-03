@@ -1,7 +1,7 @@
 {
   "name": "my-camp-game",
   "private": true,
-  "version": "20.20.0",
+  "version": "20.21.0",
   "type": "module",
   "scripts": {
     "qa:static": "node tests/static-check.mjs",
