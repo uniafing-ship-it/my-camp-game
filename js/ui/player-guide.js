@@ -125,7 +125,7 @@ export function createPlayerGuide(source = globalThis.document) {
     const win = source?.defaultView;
     if (!win) return false;
     if (compactMedia) return compactMedia.matches;
-    return (win.innerWidth || 9999) <= 760;
+    return ((win.innerWidth || 9999) <= 760 || (win.innerWidth > win.innerHeight && win.innerHeight <= 520));
   };
 
   const refresh = () => {
@@ -147,7 +147,7 @@ export function createPlayerGuide(source = globalThis.document) {
     if (!quest) return false;
     started = true;
     const win = source.defaultView;
-    compactMedia = typeof win?.matchMedia === 'function' ? win.matchMedia('(max-width: 760px)') : null;
+    compactMedia = typeof win?.matchMedia === 'function' ? win.matchMedia('(max-width: 760px), (orientation: landscape) and (max-height: 520px)') : null;
     compactListener = () => refresh();
     compactMedia?.addEventListener?.('change', compactListener);
     refresh();
