@@ -54,3 +54,43 @@ test('phone HUD keeps secondary controls compact until the player opens them', a
 
   expect(pageErrors).toEqual([]);
 });
+
+for (const viewport of [{width:844,height:390},{width:932,height:430},{width:740,height:360}]) {
+  test(`compact HUD survives phone rotation at ${viewport.width}x${viewport.height}`, async ({ page }) => {
+    const errors=[];
+    page.on('pageerror',error=>errors.push(error.message));
+    await gotoGame(page);
+    await page.setViewportSize(viewport);
+    const panel=page.locator('#v20-agent-panel');
+    const launcher=page.locator('#v20-agent-launcher');
+    const tools=page.locator('#topRight .tr-btns');
+    await expect(panel).toBeHidden();
+    await expect(launcher).toBeVisible();
+    await expect(tools).toBeHidden();
+    await expect(page.locator('#playerGuideHint')).toHaveAttribute('data-compact','true');
+    await launcher.click();
+    await expect(panel).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(panel).toBeHidden();
+    await expect.poll(()=>page.evaluate(()=>window.MyCampLegacy.state)).toBe('play');
+    await page.locator('#mobileToolsBtn').click();
+    await expect(tools).toBeVisible();
+    const bounds=await tools.evaluate(el=>{
+      const box=el.getBoundingClientRect();
+      return [...el.querySelectorAll('.hbtn')].map(button=>{
+        const r=button.getBoundingClientRect();
+        return r.left>=box.left && r.right<=box.right && r.top>=box.top && r.bottom<=box.bottom && r.left>=0 && r.right<=innerWidth && r.bottom<=innerHeight;
+      });
+    });
+    expect(bounds).toHaveLength(6);
+    expect(bounds.every(Boolean)).toBe(true);
+    await page.setViewportSize({width:390,height:844});
+    await expect(panel).toBeHidden();
+    await expect(launcher).toBeVisible();
+    await page.setViewportSize({width:1280,height:800});
+    await expect(launcher).toBeHidden();
+    await expect(panel).toBeVisible();
+    await expect(tools).toBeVisible();
+    expect(errors).toEqual([]);
+  });
+}

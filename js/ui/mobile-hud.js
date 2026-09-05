@@ -1,6 +1,6 @@
 // Stage 6 mobile HUD cleanup: keep secondary controls available without
 // permanently occupying scarce phone screen space.
-const MOBILE_QUERY = '(max-width: 760px)';
+const MOBILE_QUERY = '(max-width: 760px), (orientation: landscape) and (max-height: 520px)';
 
 function ensureStyle(doc) {
   if (doc.getElementById('stage6MobileHudStyle')) return;
@@ -10,7 +10,7 @@ function ensureStyle(doc) {
     #mobileToolsBtn { display:none; }
     #relicRow:empty { display:none; }
 
-    @media (max-width:760px) {
+    @media (max-width:760px), (orientation:landscape) and (max-height:520px) {
       #topRight {
         overflow:visible !important;
         padding-bottom:6px;
@@ -71,9 +71,9 @@ function ensureStyle(doc) {
       #skillPanel .store-title { letter-spacing:1.4px; }
     }
 
-    @media (orientation:landscape) and (max-width:760px) and (max-height:500px) {
+    @media (orientation:landscape) and (max-height:520px) {
       #topRight .tr-btns {
-        width:min(190px,48vw);
+        width:min(280px,calc(100vw - 24px));
         grid-template-columns:repeat(6,1fr);
       }
       #topRight .tr-btns .hbtn {
@@ -112,7 +112,7 @@ export function createMobileHud(doc = globalThis.document) {
   }
 
   const media = typeof win.matchMedia === 'function' ? win.matchMedia(MOBILE_QUERY) : null;
-  const isMobile = () => media ? media.matches : (win.innerWidth || 9999) <= 760;
+  const isMobile = () => media ? media.matches : ((win.innerWidth || 9999) <= 760 || (win.innerWidth > win.innerHeight && win.innerHeight <= 520));
 
   const close = () => {
     topRight.classList.remove('mobile-tools-open');

@@ -26,8 +26,8 @@ export function createAgentPanel(agent,decisionEngine,autopilot,root=document.bo
 
   const status=panel.querySelector('[data-status]'),goal=panel.querySelector('[data-goal]'),reason=panel.querySelector('[data-reason]'),action=panel.querySelector('[data-action]'),log=panel.querySelector('[data-log]'),toggle=panel.querySelector('[data-toggle]'),step=panel.querySelector('[data-step]'),closeBtn=panel.querySelector('[data-close]');
   const history=[];
-  const mobile=typeof win.matchMedia==='function'?win.matchMedia('(max-width: 760px)'):null;
-  const isMobile=()=>mobile?mobile.matches:(win.innerWidth||9999)<=760;
+  const mobile=typeof win.matchMedia==='function'?win.matchMedia('(max-width: 760px), (orientation: landscape) and (max-height: 520px)'):null;
+  const isMobile=()=>mobile?mobile.matches:((win.innerWidth||9999)<=760||(win.innerWidth>win.innerHeight&&win.innerHeight<=520));
   const describe=a=>a?.type==='observe'?'наблюдение':`${a?.type||'—'}${Object.prototype.hasOwnProperty.call(a||{},'value')?': '+a.value:''}`;
   const push=text=>{if(!text||history[0]===text)return;history.unshift(text);history.splice(6);log.textContent=history.join(' · ')||'нет действий';};
 
@@ -58,7 +58,14 @@ export function createAgentPanel(agent,decisionEngine,autopilot,root=document.bo
 
   const openPanel=()=>setOpen(true);
   const closePanel=()=>setOpen(false);
-  const onKey=event=>{if(event.key==='Escape'&&panel.classList.contains('is-open'))closePanel();};
+  const onKey=event=>{
+    if(event.key==='Escape'&&panel.classList.contains('is-open')){
+      event.preventDefault();
+      event.stopPropagation();
+      closePanel();
+      launcher.focus?.({preventScroll:true});
+    }
+  };
   const onMedia=()=>{if(!isMobile())setOpen(false);};
 
   launcher.addEventListener('click',openPanel);
