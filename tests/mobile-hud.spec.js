@@ -72,6 +72,7 @@ for (const viewport of [{width:844,height:390},{width:932,height:430},{width:740
     await expect(panel).toBeVisible();
     await page.keyboard.press('Escape');
     await expect(panel).toBeHidden();
+    await expect.poll(()=>page.evaluate(()=>window.MyCampLegacy.state)).toBe('play');
     await page.locator('#mobileToolsBtn').click();
     await expect(tools).toBeVisible();
     const bounds=await tools.evaluate(el=>{

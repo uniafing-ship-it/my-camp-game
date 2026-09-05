@@ -58,7 +58,14 @@ export function createAgentPanel(agent,decisionEngine,autopilot,root=document.bo
 
   const openPanel=()=>setOpen(true);
   const closePanel=()=>setOpen(false);
-  const onKey=event=>{if(event.key==='Escape'&&panel.classList.contains('is-open'))closePanel();};
+  const onKey=event=>{
+    if(event.key==='Escape'&&panel.classList.contains('is-open')){
+      event.preventDefault();
+      event.stopPropagation();
+      closePanel();
+      launcher.focus?.({preventScroll:true});
+    }
+  };
   const onMedia=()=>{if(!isMobile())setOpen(false);};
 
   launcher.addEventListener('click',openPanel);
