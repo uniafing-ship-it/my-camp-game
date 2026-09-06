@@ -1,16 +1,89 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene load_steps=8 format=3]
 
 [ext_resource type="Script" path="res://scripts/world.gd" id="1_world"]
 [ext_resource type="PackedScene" path="res://scenes/player/Player.tscn" id="2_player"]
 [ext_resource type="Script" path="res://scripts/mobile_joystick.gd" id="3_joystick"]
+[ext_resource type="Script" path="res://scripts/resource_manager.gd" id="4_resources"]
+[ext_resource type="Script" path="res://scripts/resource_world.gd" id="5_resource_world"]
+[ext_resource type="Script" path="res://scripts/resource_hud.gd" id="6_resource_hud"]
+
+[sub_resource type="StyleBoxFlat" id="Style_resource_panel"]
+bg_color = Color(0.035, 0.07, 0.052, 0.88)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.68, 0.56, 0.31, 0.82)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+shadow_color = Color(0, 0, 0, 0.35)
+shadow_size = 6
 
 [node name="Main" type="Node3D"]
 script = ExtResource("1_world")
+
+[node name="ResourceManager" type="Node" parent="."]
+script = ExtResource("4_resources")
+carry_capacity = 30
+
+[node name="ResourceGameplay" type="Node3D" parent="."]
+script = ExtResource("5_resource_world")
 
 [node name="Player" parent="." instance=ExtResource("2_player")]
 position = Vector3(0, 0, 7)
 
 [node name="UI" type="CanvasLayer" parent="."]
+
+[node name="ResourceHUD" type="Control" parent="UI"]
+layout_mode = 3
+anchors_preset = 0
+offset_left = 16.0
+offset_top = 54.0
+offset_right = 462.0
+offset_bottom = 176.0
+mouse_filter = 2
+script = ExtResource("6_resource_hud")
+
+[node name="Panel" type="PanelContainer" parent="UI/ResourceHUD"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("Style_resource_panel")
+
+[node name="Margin" type="MarginContainer" parent="UI/ResourceHUD/Panel"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 10
+
+[node name="VBox" type="VBoxContainer" parent="UI/ResourceHUD/Panel/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="Carried" type="Label" parent="UI/ResourceHUD/Panel/Margin/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.96, 0.89, 0.69, 1)
+theme_override_font_sizes/font_size = 15
+text = "РЮКЗАК 0/30"
+
+[node name="Stored" type="Label" parent="UI/ResourceHUD/Panel/Margin/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.82, 0.9, 0.8, 1)
+theme_override_font_sizes/font_size = 15
+text = "СКЛАД"
+
+[node name="Status" type="Label" parent="UI/ResourceHUD/Panel/Margin/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.75, 0.82, 0.76, 0.9)
+theme_override_font_sizes/font_size = 13
+autowrap_mode = 2
+text = "Подойди к ресурсу — добыча начнётся автоматически."
 
 [node name="MobileJoystick" type="Control" parent="UI"]
 offset_left = 24.0
@@ -27,8 +100,8 @@ script = ExtResource("3_joystick")
 [node name="StageLabel" type="Label" parent="UI"]
 offset_left = 18.0
 offset_top = 16.0
-offset_right = 360.0
-offset_bottom = 48.0
+offset_right = 430.0
+offset_bottom = 44.0
 theme_override_colors/font_color = Color(0.93, 0.89, 0.76, 0.92)
 theme_override_font_sizes/font_size = 16
-text = "MY CAMP GAME · GODOT 4 · MIGRATION STAGE 1"
+text = "MY CAMP GAME · GODOT 4 · MIGRATION STAGE 2"
