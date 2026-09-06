@@ -20,9 +20,10 @@ import { createAgentPanel } from './ui/agent-panel.js';
 import { createPlayerGuide } from './ui/player-guide.js';
 import { createMobileHud } from './ui/mobile-hud.js';
 import { createCampEncounters } from './content/camp-encounters.js';
+import { createCampProgression } from './content/camp-progression.js';
 
 const bus=new EventBus();
-const state=new StateStore(createState({meta:{runtimeVersion:'20.24.0'}}));
+const state=new StateStore(createState({meta:{runtimeVersion:'20.25.0'}}));
 const runtime=createRuntime({bus,state});
 const authority=createDomainAuthority(state);
 const registry=new SystemRegistry(runtime);
@@ -51,17 +52,19 @@ for(const name of ['resources','villagerMigration','productionMigration','buildi
 authority.commit('save',{key:SaveManager.key,version:SaveManager.version},{source:'v20-core'});
 
 const uiActions=bindGameplayCommands(commands);
-authority.commit('ui',{commandBindings:Object.keys(uiActions).filter(key=>uiActions[key]),stateBridge:'one-way',adaptiveHud:true,strategicAgent:'20.22',playerGuidance:'stage6-early-quest-coach',mobileHud:'stage6-compact-phone',worldEvents:'stage7-post-raid-encounters'},{source:'v20-core'});
+authority.commit('ui',{commandBindings:Object.keys(uiActions).filter(key=>uiActions[key]),stateBridge:'one-way',adaptiveHud:true,strategicAgent:'20.22',playerGuidance:'stage6-early-quest-coach',mobileHud:'stage6-compact-phone',worldEvents:'stage7-post-raid-encounters',campProgression:'stage7-five-tiers'},{source:'v20-core'});
 
-const api={runtime,bus,state,loop,migration,authority,save:SaveManager,commands,agent,decisionEngine,autopilot,uiActions,uiBridge:null,agentPanel:null,playerGuide:null,mobileHud:null,encounters:null};
+const api={runtime,bus,state,loop,migration,authority,save:SaveManager,commands,agent,decisionEngine,autopilot,uiActions,uiBridge:null,agentPanel:null,playerGuide:null,mobileHud:null,encounters:null,campProgression:null};
 api.uiBridge=createUIStateBridge(runtime);
 api.mobileHud=createMobileHud(document);
 api.agentPanel=createAgentPanel(agent,decisionEngine,autopilot);
 api.playerGuide=createPlayerGuide(document);
 api.encounters=createCampEncounters({authority,commands,document,storage:window.localStorage});
+api.campProgression=createCampProgression({authority,document});
 api.playerGuide.start();
 api.encounters.start();
-if(document.readyState!=='complete') window.addEventListener('load',()=>{api.playerGuide.start();api.encounters.start();},{once:true});
+api.campProgression.start();
+if(document.readyState!=='complete') window.addEventListener('load',()=>{api.playerGuide.start();api.encounters.start();api.campProgression.start();},{once:true});
 window.MyCampGame=Object.freeze(api);
 document.documentElement.dataset.v20Foundation='1';
 document.documentElement.dataset.v20Migration='domain-authority';
@@ -81,6 +84,7 @@ document.documentElement.dataset.v20AgentPanel='strategic-mobile-sheet';
 document.documentElement.dataset.v20PlayerGuide='stage6-quest-coach-v1';
 document.documentElement.dataset.v20MobileHud='stage6-compact-v1';
 document.documentElement.dataset.v20WorldEvents='stage7-encounters-v1';
+document.documentElement.dataset.v20CampProgression='stage7-tiers-v1';
 document.documentElement.dataset.v20Stabilization='20.20';
 window.dispatchEvent(new CustomEvent('mycamp:v20-ready',{detail:runtime}));
 if(document.readyState==='complete') loop.start();else window.addEventListener('load',()=>loop.start(),{once:true});

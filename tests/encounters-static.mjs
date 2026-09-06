@@ -16,7 +16,7 @@ const [main,commands] = await Promise.all([
   readFile(new URL('../js/main.js',import.meta.url),'utf8'),
   readFile(new URL('../js/core/command-registry.js',import.meta.url),'utf8')
 ]);
-assert.match(main,/runtimeVersion:'20\.24\.0'/);
+assert.match(main,/runtimeVersion:'20\.25\.0'/);
 assert.match(main,/createCampEncounters/);
 assert.match(main,/v20WorldEvents='stage7-encounters-v1'/);
 assert.match(main,/worldEvents:'stage7-post-raid-encounters'/);
