@@ -21,6 +21,6 @@ assert.match(main,/createCampEncounters/);
 assert.match(main,/v20WorldEvents='stage7-encounters-v1'/);
 assert.match(main,/worldEvents:'stage7-post-raid-encounters'/);
 assert.match(commands,/world\.event\.resolve/);
-assert.match(commands,/applyResourceDelta/);
+assert.match(commands,/resources\?\.apply\?\./);
 
 console.log('Stage 7 world encounters static gate: PASS');
