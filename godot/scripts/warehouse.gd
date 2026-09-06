@@ -9,7 +9,7 @@ var _next_deposit_msec: int = 0
 func _ready() -> void:
 	add_to_group("warehouse")
 
-func try_deposit(player_position: Vector3, manager: Node) -> bool:
+func try_deposit(player_position: Vector3, manager) -> bool:
 	if manager == null or not manager.has_method("deposit_all"):
 		return false
 	if global_position.distance_to(player_position) > deposit_radius:
