@@ -24,7 +24,7 @@ import { createCampProgression } from './content/camp-progression.js';
 import { createWebGL3DRenderer } from './render/webgl3d-renderer.js';
 
 const bus=new EventBus();
-const state=new StateStore(createState({meta:{runtimeVersion:'20.26.0'}}));
+const state=new StateStore(createState({meta:{runtimeVersion:'20.25.0'}}));
 const runtime=createRuntime({bus,state});
 const authority=createDomainAuthority(state);
 const registry=new SystemRegistry(runtime);
