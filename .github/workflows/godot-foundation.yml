@@ -37,16 +37,16 @@ jobs:
 
       - name: Export Web build
         run: |
-          mkdir -p dist/godot-web
-          godot --headless --path godot --export-release "Web" ../dist/godot-web/index.html
-          test -f dist/godot-web/index.html
-          test -f dist/godot-web/index.wasm
-          test -f dist/godot-web/index.pck
+          mkdir -p godot/build/web
+          godot --headless --path godot --export-release "Web" build/web/index.html
+          test -f godot/build/web/index.html
+          test -f godot/build/web/index.wasm
+          test -f godot/build/web/index.pck
 
       - name: Upload Web preview artifact
         uses: actions/upload-artifact@v4
         with:
           name: my-camp-game-godot-web
-          path: dist/godot-web
+          path: godot/build/web
           if-no-files-found: error
           retention-days: 7
