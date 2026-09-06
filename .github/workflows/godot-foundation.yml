@@ -24,7 +24,7 @@ jobs:
         with:
           version: 4.3.0
           use-dotnet: false
-          include-templates: false
+          include-templates: true
 
       - name: Verify Godot
         run: godot --version
@@ -34,3 +34,19 @@ jobs:
 
       - name: Boot main scene
         run: godot --headless --path godot --quit-after 8
+
+      - name: Export Web build
+        run: |
+          mkdir -p dist/godot-web
+          godot --headless --path godot --export-release "Web" ../dist/godot-web/index.html
+          test -f dist/godot-web/index.html
+          test -f dist/godot-web/index.wasm
+          test -f dist/godot-web/index.pck
+
+      - name: Upload Web preview artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: my-camp-game-godot-web
+          path: dist/godot-web
+          if-no-files-found: error
+          retention-days: 7
