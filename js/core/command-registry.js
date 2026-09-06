@@ -1,4 +1,4 @@
-// Stage 5: all strategic-agent mutations cross the V20 command boundary.
+// Stage 7: all gameplay/content mutations cross the V20 command boundary.
 export function registerCommandAdapters(commands, migration, runtime, authority) {
   const system = name => runtime?.get?.(name);
   const refresh = (names, source = 'v20-command') => { for (const name of names) system(name)?.refresh?.(source); };
@@ -9,12 +9,32 @@ export function registerCommandAdapters(commands, migration, runtime, authority)
     refresh(affected);
     return result;
   };
+  const resourceKeys = new Set(['wood','stone','food','gold','pelts']);
+  const cleanMap = input => Object.fromEntries(Object.entries(input || {}).filter(([key,value]) => resourceKeys.has(key) && Number.isFinite(Number(value)) && Number(value) >= 0).map(([key,value]) => [key,Number(value)]));
 
   commands.register('resources.canAfford',{can:costs=>system('resources')?.canAfford?.(costs)===true,execute:costs=>({allowed:system('resources')?.canAfford?.(costs)===true,costs:{...(costs||{})}})});
   commands.register('resources.snapshot',{can:()=>true,execute:()=>system('resources')?.snapshot?.()||{}});
   commands.register('authority.status',{can:()=>true,execute:()=>authority?.status?.()||{}});
   commands.register('villagers.snapshot',{can:()=>true,execute:()=>authority?.snapshot?.('villagers')||{}});
   commands.register('buildings.snapshot',{can:()=>true,execute:()=>authority?.snapshot?.('buildings')||{}});
+
+  commands.register('world.event.resolve',{
+    can:payload=>{
+      const costs=cleanMap(payload?.costs);
+      return typeof system('resources')?.apply==='function' && system('resources')?.canAfford?.(costs)===true;
+    },
+    execute:payload=>{
+      const resources=system('resources');
+      const costs=cleanMap(payload?.costs),rewards=cleanMap(payload?.rewards);
+      if(resources?.canAfford?.(costs)!==true)return{ok:false,reason:'insufficient-resources'};
+      const delta={};
+      for(const key of resourceKeys)delta[key]=(rewards[key]||0)-(costs[key]||0);
+      const next=resources?.apply?.(delta);
+      if(!next)return{ok:false,reason:'resource-boundary-unavailable'};
+      migration?.commands?.save?.();
+      return{ok:true,eventId:String(payload?.eventId||''),choiceId:String(payload?.choiceId||''),resources:{...next}};
+    }
+  });
 
   commands.register('build',{can:()=>typeof migration?.commands?.build==='function',execute:payload=>executeLegacy('build',payload,['resources','buildingMigration','villagerMigration','productionMigration'])});
   commands.register('upgrade',{can:()=>typeof migration?.commands?.upgrade==='function',execute:payload=>executeLegacy('upgrade',payload,['resources','buildingMigration','villagerMigration','productionMigration','combatMigration'])});
