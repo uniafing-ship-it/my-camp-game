@@ -81,7 +81,7 @@ export function createCampEncounters({authority,commands,document:doc=globalThis
     return true;
   };
   const flash=text=>{if(!buildUi())return;clearTimeout(toastTimer);ui.toast.textContent=text;ui.toast.classList.add('on');toastTimer=setTimeout(()=>ui.toast?.classList.remove('on'),2300);};
-  const hide=()=>{if(!ui.backdrop)return;ui.backdrop.classList.remove('open');ui.backdrop.setAttribute('aria-hidden','true');current=null;};
+  const hide=()=>{if(current){resolved.add(current.id);saveResolved(storage,resolved);}if(!ui.backdrop)return;ui.backdrop.classList.remove('open');ui.backdrop.setAttribute('aria-hidden','true');current=null;};
   const resolveChoice=(encounter,choiceDef)=>{
     const payload={eventId:encounter.id,choiceId:choiceDef.id,costs:choiceDef.costs,rewards:choiceDef.rewards};
     let result;try{result=commands?.execute?.('world.event.resolve',payload);}catch(err){result={ok:false,reason:err?.message||'command-failed'};}
