@@ -10,7 +10,7 @@ assert.equal(questHintFor('Победи 25 орков'), '', 'late-game quests m
 
 const main = await readFile(new URL('../js/main.js', import.meta.url), 'utf8');
 assert.match(main, /createPlayerGuide/);
-assert.match(main, /runtimeVersion:'20\.24\.0'/);
+assert.match(main, /runtimeVersion:'20\.25\.0'/);
 assert.match(main, /v20PlayerGuide='stage6-quest-coach-v1'/);
 assert.match(main, /playerGuidance:'stage6-early-quest-coach'/);
 
