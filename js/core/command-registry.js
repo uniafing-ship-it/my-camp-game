@@ -21,16 +21,16 @@ export function registerCommandAdapters(commands, migration, runtime, authority)
   commands.register('world.event.resolve',{
     can:payload=>{
       const costs=cleanMap(payload?.costs);
-      return typeof migration?.applyResourceDelta==='function' && system('resources')?.canAfford?.(costs)===true;
+      return typeof system('resources')?.apply==='function' && system('resources')?.canAfford?.(costs)===true;
     },
     execute:payload=>{
+      const resources=system('resources');
       const costs=cleanMap(payload?.costs),rewards=cleanMap(payload?.rewards);
-      if(system('resources')?.canAfford?.(costs)!==true)return{ok:false,reason:'insufficient-resources'};
+      if(resources?.canAfford?.(costs)!==true)return{ok:false,reason:'insufficient-resources'};
       const delta={};
       for(const key of resourceKeys)delta[key]=(rewards[key]||0)-(costs[key]||0);
-      const next=migration?.applyResourceDelta?.(delta);
+      const next=resources?.apply?.(delta);
       if(!next)return{ok:false,reason:'resource-boundary-unavailable'};
-      refresh(['resources'],'stage7-world-event');
       migration?.commands?.save?.();
       return{ok:true,eventId:String(payload?.eventId||''),choiceId:String(payload?.choiceId||''),resources:{...next}};
     }
