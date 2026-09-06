@@ -1,4 +1,4 @@
-import { EVENT_TYPES, createEvent } from '../systems/events.js';
+import { EVENT_TYPES } from '../systems/events.js';
 
 const STORAGE_KEY='camp_stage7_encounters_v1';
 const RESOURCE_ICON=Object.freeze({wood:'🌲',stone:'🪨',food:'🍓',gold:'🪙',pelts:'🐻'});
