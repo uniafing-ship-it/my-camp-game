@@ -8,6 +8,23 @@ function seeded(i,t,m){
 }
 
 export function createAAAVisualPass(doc=document){
+  let active=null;
+  let disposed=false;
+  let pendingQuality=null;
+  const timer=window.setTimeout(()=>{
+    if(disposed)return;
+    active=activateAAAVisualPass(doc);
+    if(pendingQuality)active?.setQuality?.(pendingQuality);
+  },450);
+  return {
+    get enabled(){return !disposed;},
+    get quality(){return active?.quality||'pending';},
+    setQuality(q){if(active)active.setQuality?.(q);else if(['high','medium','eco'].includes(q))pendingQuality=q;},
+    destroy(){disposed=true;window.clearTimeout(timer);active?.destroy?.();}
+  };
+}
+
+function activateAAAVisualPass(doc=document){
   const root=doc.documentElement;
   const game=doc.getElementById('game');
   if(!root||!game) return {enabled:false,destroy(){}};
