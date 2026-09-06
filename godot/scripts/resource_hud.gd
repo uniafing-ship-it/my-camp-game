@@ -4,7 +4,7 @@ extends Control
 @onready var stored_label: Label = $Panel/Margin/VBox/Stored
 @onready var status_label: Label = $Panel/Margin/VBox/Status
 
-var _manager: Node = null
+var _manager = null
 
 func _ready() -> void:
 	call_deferred("_bind_manager")
@@ -14,24 +14,25 @@ func _bind_manager() -> void:
 	if _manager == null:
 		return
 	if _manager.has_signal("inventory_changed"):
-		_manager.inventory_changed.connect(_on_inventory_changed)
+		_manager.connect("inventory_changed", Callable(self, "_on_inventory_changed"))
 	if _manager.has_signal("activity_changed"):
-		_manager.activity_changed.connect(_on_activity_changed)
+		_manager.connect("activity_changed", Callable(self, "_on_activity_changed"))
 	_refresh()
 
 func _refresh() -> void:
 	if _manager == null:
 		return
-	_on_inventory_changed(_manager.carried, _manager.stored)
-	_on_activity_changed(str(_manager.last_activity))
+	_on_inventory_changed(_manager.get("carried"), _manager.get("stored"))
+	_on_activity_changed(str(_manager.get("last_activity")))
 
 func _on_inventory_changed(carried: Dictionary, stored: Dictionary) -> void:
 	var total := 0
 	for key in ["wood", "stone", "food", "gold"]:
 		total += int(carried.get(key, 0))
+	var capacity := int(_manager.get("carry_capacity")) if _manager else 0
 	carried_label.text = "РЮКЗАК %d/%d   🌲 %d   🪨 %d   🍓 %d   🪙 %d" % [
 		total,
-		int(_manager.carry_capacity) if _manager else 0,
+		capacity,
 		int(carried.get("wood", 0)),
 		int(carried.get("stone", 0)),
 		int(carried.get("food", 0)),
