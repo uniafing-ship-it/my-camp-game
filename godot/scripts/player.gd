@@ -5,16 +5,19 @@ extends CharacterBody3D
 @export var acceleration: float = 18.0
 @export var gravity_force: float = 24.0
 @export var look_sensitivity: float = 0.004
+@export var auto_harvest_enabled: bool = true
 
 @onready var visual: Node3D = $Visual
 @onready var camera_pivot: Node3D = $CameraPivot
 
 var _joystick: Node = null
+var _resource_manager = null
 var _pitch := deg_to_rad(-17.0)
 var _yaw := 0.0
 
 func _ready() -> void:
 	_joystick = get_tree().get_first_node_in_group("mobile_joystick")
+	_resource_manager = get_tree().get_first_node_in_group("resource_manager")
 	_yaw = rotation.y
 
 func _physics_process(delta: float) -> void:
@@ -62,6 +65,37 @@ func _physics_process(delta: float) -> void:
 		visual.rotation.y = lerp_angle(visual.rotation.y, target_angle, min(1.0, delta * 10.0))
 
 	move_and_slide()
+	_process_resource_gameplay()
+
+func _process_resource_gameplay() -> void:
+	if _resource_manager == null:
+		_resource_manager = get_tree().get_first_node_in_group("resource_manager")
+	if _resource_manager == null:
+		return
+
+	for warehouse in get_tree().get_nodes_in_group("warehouse"):
+		if warehouse and warehouse.has_method("try_deposit"):
+			warehouse.try_deposit(global_position, _resource_manager)
+
+	if not auto_harvest_enabled:
+		return
+	if _resource_manager.has_method("get_free_capacity") and int(_resource_manager.get_free_capacity()) <= 0:
+		return
+
+	var nearest: Node3D = null
+	var nearest_distance := INF
+	for candidate in get_tree().get_nodes_in_group("harvestables"):
+		if not (candidate is Node3D):
+			continue
+		if candidate.has_method("is_depleted") and candidate.is_depleted():
+			continue
+		var distance := global_position.distance_to(candidate.global_position)
+		var radius := float(candidate.get("harvest_radius"))
+		if distance <= radius and distance < nearest_distance:
+			nearest = candidate
+			nearest_distance = distance
+	if nearest and nearest.has_method("try_harvest"):
+		nearest.try_harvest(_resource_manager)
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventScreenDrag:

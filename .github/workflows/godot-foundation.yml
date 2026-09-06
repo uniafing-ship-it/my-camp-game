@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - migration/godot-4
+      - migration/godot-stage-2-resources
     paths:
       - 'godot/**'
       - '.github/workflows/godot-foundation.yml'
@@ -31,6 +32,9 @@ jobs:
 
       - name: Import and parse project
         run: godot --headless --path godot --editor --quit
+
+      - name: Stage 2 resource tests
+        run: godot --headless --path godot --script res://tests/stage2_resources.gd
 
       - name: Boot main scene
         run: godot --headless --path godot --quit-after 8
