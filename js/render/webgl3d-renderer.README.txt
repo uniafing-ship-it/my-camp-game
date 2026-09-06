@@ -1,0 +1,1 @@
+True WebGL 3D renderer branch for My Camp Game. Gameplay logic remains authoritative in the legacy simulation; this branch replaces the visible world renderer with a synchronized perspective WebGL scene.
