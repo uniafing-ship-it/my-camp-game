@@ -11,7 +11,7 @@ extends CharacterBody3D
 @onready var camera_pivot: Node3D = $CameraPivot
 
 var _joystick: Node = null
-var _resource_manager: Node = null
+var _resource_manager = null
 var _pitch := deg_to_rad(-17.0)
 var _yaw := 0.0
 
