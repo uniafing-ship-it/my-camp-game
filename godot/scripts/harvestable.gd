@@ -25,7 +25,7 @@ func _ready() -> void:
 func is_depleted() -> bool:
 	return _depleted
 
-func try_harvest(manager: Node) -> int:
+func try_harvest(manager) -> int:
 	if _depleted or manager == null or not manager.has_method("add_carried"):
 		return 0
 	var now := Time.get_ticks_msec()
