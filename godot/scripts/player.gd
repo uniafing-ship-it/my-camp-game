@@ -18,7 +18,14 @@ func _ready() -> void:
 	_yaw = rotation.y
 
 func _physics_process(delta: float) -> void:
-	var input_vec := Input.get_vector("move_left", "move_right", "move_forward", "move_back")
+	var input_vec := Vector2.ZERO
+	if Input.is_key_pressed(KEY_A) or Input.is_key_pressed(KEY_LEFT): input_vec.x -= 1.0
+	if Input.is_key_pressed(KEY_D) or Input.is_key_pressed(KEY_RIGHT): input_vec.x += 1.0
+	if Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP): input_vec.y -= 1.0
+	if Input.is_key_pressed(KEY_S) or Input.is_key_pressed(KEY_DOWN): input_vec.y += 1.0
+	if input_vec.length() > 1.0:
+		input_vec = input_vec.normalized()
+
 	if _joystick and _joystick.has_method("get_vector"):
 		var mobile_vec: Vector2 = _joystick.get_vector()
 		if mobile_vec.length() > input_vec.length():
@@ -35,11 +42,12 @@ func _physics_process(delta: float) -> void:
 		forward = forward.normalized()
 		right = right.normalized()
 
-	var desired_dir := (right * input_vec.x + forward * -input_vec.y)
+	var desired_dir := right * input_vec.x + forward * -input_vec.y
 	if desired_dir.length_squared() > 1.0:
 		desired_dir = desired_dir.normalized()
 
-	var target_speed := sprint_speed if Input.is_action_pressed("sprint") else move_speed
+	var sprinting := Input.is_key_pressed(KEY_SHIFT)
+	var target_speed := sprint_speed if sprinting else move_speed
 	var target_velocity := desired_dir * target_speed
 	velocity.x = move_toward(velocity.x, target_velocity.x, acceleration * delta)
 	velocity.z = move_toward(velocity.z, target_velocity.z, acceleration * delta)
