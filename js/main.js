@@ -55,6 +55,42 @@ authority.commit('save',{key:SaveManager.key,version:SaveManager.version},{sourc
 const uiActions=bindGameplayCommands(commands);
 authority.commit('ui',{commandBindings:Object.keys(uiActions).filter(key=>uiActions[key]),stateBridge:'one-way',adaptiveHud:true,strategicAgent:'20.22',playerGuidance:'stage6-early-quest-coach',mobileHud:'stage6-compact-phone',worldEvents:'stage7-post-raid-encounters',campProgression:'stage7-five-tiers',renderer:'stage9-webgl3d-v1'},{source:'v20-core'});
 
+function createLazyRenderer3D(documentRoot){
+  const gameCanvas=documentRoot.getElementById('game');
+  const movementKeys=new Set(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','KeyA','KeyD','KeyW','KeyS']);
+  let instance=null;
+  let started=false;
+
+  const cleanup=()=>{
+    window.removeEventListener('keydown',onKeyDown);
+    gameCanvas?.removeEventListener('pointerdown',onWorldPointerDown);
+  };
+  const start=()=>{
+    if(started) return instance;
+    started=true;
+    cleanup();
+    instance=createWebGL3DRenderer(documentRoot);
+    return instance;
+  };
+  function onKeyDown(event){
+    if(window.MyCampLegacy?.state==='play'&&movementKeys.has(event.code)) start();
+  }
+  function onWorldPointerDown(){
+    if(window.MyCampLegacy?.state==='play') start();
+  }
+
+  window.addEventListener('keydown',onKeyDown,{passive:true});
+  gameCanvas?.addEventListener('pointerdown',onWorldPointerDown,{passive:true});
+
+  return {
+    get enabled(){return instance?.enabled??true;},
+    get started(){return started;},
+    get instance(){return instance;},
+    start,
+    destroy(){cleanup();instance?.destroy?.();instance=null;started=false;}
+  };
+}
+
 const api={runtime,bus,state,loop,migration,authority,save:SaveManager,commands,agent,decisionEngine,autopilot,uiActions,uiBridge:null,agentPanel:null,playerGuide:null,mobileHud:null,encounters:null,campProgression:null,renderer3d:null};
 api.uiBridge=createUIStateBridge(runtime);
 api.mobileHud=createMobileHud(document);
@@ -62,7 +98,7 @@ api.agentPanel=createAgentPanel(agent,decisionEngine,autopilot);
 api.playerGuide=createPlayerGuide(document);
 api.encounters=createCampEncounters({authority,commands,document,storage:window.localStorage});
 api.campProgression=createCampProgression({authority,document});
-api.renderer3d=createWebGL3DRenderer(document);
+api.renderer3d=createLazyRenderer3D(document);
 api.playerGuide.start();
 api.encounters.start();
 api.campProgression.start();
