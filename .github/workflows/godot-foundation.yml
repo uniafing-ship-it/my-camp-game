@@ -1,0 +1,52 @@
+name: Godot Foundation QA
+
+on:
+  push:
+    branches:
+      - migration/godot-4
+    paths:
+      - 'godot/**'
+      - '.github/workflows/godot-foundation.yml'
+  pull_request:
+    paths:
+      - 'godot/**'
+      - '.github/workflows/godot-foundation.yml'
+
+jobs:
+  godot-headless:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Godot 4.3
+        uses: chickensoft-games/setup-godot@v2
+        with:
+          version: 4.3.0
+          use-dotnet: false
+          include-templates: true
+
+      - name: Verify Godot
+        run: godot --version
+
+      - name: Import and parse project
+        run: godot --headless --path godot --editor --quit
+
+      - name: Boot main scene
+        run: godot --headless --path godot --quit-after 8
+
+      - name: Export Web build
+        run: |
+          mkdir -p godot/build/web
+          godot --headless --path godot --export-release "Web" build/web/index.html
+          test -f godot/build/web/index.html
+          test -f godot/build/web/index.wasm
+          test -f godot/build/web/index.pck
+
+      - name: Upload Web preview artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: my-camp-game-godot-web
+          path: godot/build/web
+          if-no-files-found: error
+          retention-days: 7
