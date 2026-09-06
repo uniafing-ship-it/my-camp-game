@@ -1,0 +1,34 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/world.gd" id="1_world"]
+[ext_resource type="PackedScene" path="res://scenes/player/Player.tscn" id="2_player"]
+[ext_resource type="Script" path="res://scripts/mobile_joystick.gd" id="3_joystick"]
+
+[node name="Main" type="Node3D"]
+script = ExtResource("1_world")
+
+[node name="Player" parent="." instance=ExtResource("2_player")]
+position = Vector3(0, 0, 7)
+
+[node name="UI" type="CanvasLayer" parent="."]
+
+[node name="MobileJoystick" type="Control" parent="UI"]
+offset_left = 24.0
+offset_top = -184.0
+offset_right = 184.0
+offset_bottom = -24.0
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+grow_vertical = 0
+mouse_filter = 0
+script = ExtResource("3_joystick")
+
+[node name="StageLabel" type="Label" parent="UI"]
+offset_left = 18.0
+offset_top = 16.0
+offset_right = 360.0
+offset_bottom = 48.0
+theme_override_colors/font_color = Color(0.93, 0.89, 0.76, 0.92)
+theme_override_font_sizes/font_size = 16
+text = "MY CAMP GAME · GODOT 4 · MIGRATION STAGE 1"
