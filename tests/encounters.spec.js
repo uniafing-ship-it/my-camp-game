@@ -70,3 +70,24 @@ test('Stage 7 does not replay obsolete early encounters for an advanced save',as
   expect(state.persisted).toContain('forest-spoils');
   expect(state.persisted).toContain('stone-cache');
 });
+
+test('Stage 7 dismissal counts as declining the encounter and does not reopen it',async({page})=>{
+  await gotoSavedGame(page,baseSave());
+  const backdrop=page.locator('#stage7EncounterBackdrop');
+  await expect(backdrop).toHaveClass(/\bopen\b/,{timeout:5_000});
+  const before=await page.evaluate(()=>({...window.MyCampLegacy.storage}));
+
+  await page.keyboard.press('Escape');
+  await expect(backdrop).not.toHaveClass(/\bopen\b/);
+  await page.waitForTimeout(1_200);
+  await expect(backdrop).not.toHaveClass(/\bopen\b/);
+
+  const after=await page.evaluate(eventKey=>({
+    storage:{...window.MyCampLegacy.storage},
+    resolved:window.MyCampGame.encounters.resolved(),
+    persisted:JSON.parse(localStorage.getItem(eventKey)||'[]')
+  }),EVENT_KEY);
+  expect(after.storage).toEqual(before);
+  expect(after.resolved).toContain('forest-spoils');
+  expect(after.persisted).toContain('forest-spoils');
+});
