@@ -150,6 +150,27 @@ func heal(amount: int) -> int:
 func is_alive() -> bool:
 	return not _dead and health > 0
 
+func export_state() -> Dictionary:
+	return {
+		"position": [global_position.x, global_position.y, global_position.z],
+		"health": health,
+		"yaw": _yaw,
+		"pitch": _pitch,
+	}
+
+func import_state(data: Dictionary) -> void:
+	var saved_position = data.get("position", [])
+	if saved_position is Array and saved_position.size() >= 3:
+		global_position = Vector3(float(saved_position[0]), float(saved_position[1]), float(saved_position[2]))
+	_spawn_position = global_position
+	health = clampi(int(data.get("health", max_health)), 1, max_health)
+	_yaw = float(data.get("yaw", _yaw))
+	_pitch = clamp(float(data.get("pitch", _pitch)), deg_to_rad(-48.0), deg_to_rad(18.0))
+	_dead = false
+	_invulnerability = 0.5
+	camera_pivot.rotation = Vector3(_pitch, _yaw, 0.0)
+	health_changed.emit(health, max_health)
+
 func _die() -> void:
 	if _dead:
 		return
