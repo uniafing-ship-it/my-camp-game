@@ -38,14 +38,31 @@ func try_harvest(manager) -> int:
 	var accepted: int = int(manager.add_carried(resource_type, requested))
 	if accepted <= 0:
 		return 0
-	if not infinite_source:
-		current_amount -= accepted
+	_consume(accepted)
 	if manager.has_method("report_activity"):
 		manager.report_activity("%s: +%d %s" % [source_name, accepted, _resource_title(resource_type)])
 	harvested.emit(resource_type, accepted, current_amount)
-	if not infinite_source and current_amount <= 0:
-		_begin_regrow()
 	return accepted
+
+func take_for_worker(requested: int) -> int:
+	if requested <= 0 or _depleted:
+		return 0
+	var accepted := requested
+	if not infinite_source:
+		accepted = mini(requested, current_amount)
+	if accepted <= 0:
+		return 0
+	_consume(accepted)
+	harvested.emit(resource_type, accepted, current_amount)
+	return accepted
+
+func _consume(amount: int) -> void:
+	if infinite_source:
+		return
+	current_amount -= amount
+	if current_amount <= 0:
+		current_amount = 0
+		_begin_regrow()
 
 func _begin_regrow() -> void:
 	if _depleted:
