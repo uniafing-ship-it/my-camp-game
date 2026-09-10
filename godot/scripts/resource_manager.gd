@@ -4,24 +4,12 @@ class_name ResourceManager
 signal inventory_changed(carried: Dictionary, stored: Dictionary)
 signal activity_changed(text: String)
 
-const RESOURCE_TYPES := ["wood", "stone", "food", "gold"]
+const RESOURCE_TYPES := ["wood", "stone", "food", "gold", "pelts"]
 
 @export var carry_capacity: int = 30
 
-var carried: Dictionary = {
-	"wood": 0,
-	"stone": 0,
-	"food": 0,
-	"gold": 0,
-}
-
-var stored: Dictionary = {
-	"wood": 0,
-	"stone": 0,
-	"food": 0,
-	"gold": 0,
-}
-
+var carried: Dictionary = {"wood":0, "stone":0, "food":0, "gold":0, "pelts":0}
+var stored: Dictionary = {"wood":0, "stone":0, "food":0, "gold":0, "pelts":0}
 var last_activity: String = "Подойди к ресурсу — добыча начнётся автоматически."
 
 func _ready() -> void:
@@ -39,8 +27,7 @@ func get_free_capacity() -> int:
 	return maxi(0, carry_capacity - get_total_carried())
 
 func add_carried(resource_type: String, amount: int) -> int:
-	if amount <= 0 or not carried.has(resource_type):
-		return 0
+	if amount <= 0 or not carried.has(resource_type): return 0
 	var accepted := mini(amount, get_free_capacity())
 	if accepted <= 0:
 		report_activity("Рюкзак заполнен. Вернись к складу.")
@@ -50,25 +37,19 @@ func add_carried(resource_type: String, amount: int) -> int:
 	return accepted
 
 func add_stored(resource_type: String, amount: int) -> int:
-	if amount <= 0 or not stored.has(resource_type):
-		return 0
+	if amount <= 0 or not stored.has(resource_type): return 0
 	stored[resource_type] = int(stored[resource_type]) + amount
 	inventory_changed.emit(carried.duplicate(true), stored.duplicate(true))
 	return amount
 
 func can_afford_stored(cost: Dictionary) -> bool:
 	for resource_type in cost.keys():
-		if not stored.has(resource_type):
-			return false
-		if int(stored.get(resource_type, 0)) < int(cost[resource_type]):
-			return false
+		if not stored.has(resource_type) or int(stored.get(resource_type, 0)) < int(cost[resource_type]): return false
 	return true
 
 func spend_stored(cost: Dictionary) -> bool:
-	if not can_afford_stored(cost):
-		return false
-	for resource_type in cost.keys():
-		stored[resource_type] = int(stored[resource_type]) - int(cost[resource_type])
+	if not can_afford_stored(cost): return false
+	for resource_type in cost.keys(): stored[resource_type] = int(stored[resource_type]) - int(cost[resource_type])
 	inventory_changed.emit(carried.duplicate(true), stored.duplicate(true))
 	return true
 
@@ -88,18 +69,12 @@ func deposit_all() -> Dictionary:
 	return moved
 
 func report_activity(text: String) -> void:
-	if text.is_empty():
-		return
+	if text.is_empty(): return
 	last_activity = text
 	activity_changed.emit(last_activity)
 
 func export_state() -> Dictionary:
-	return {
-		"carried": carried.duplicate(true),
-		"stored": stored.duplicate(true),
-		"carry_capacity": carry_capacity,
-		"last_activity": last_activity,
-	}
+	return {"carried":carried.duplicate(true), "stored":stored.duplicate(true), "carry_capacity":carry_capacity, "last_activity":last_activity}
 
 func import_state(data: Dictionary) -> void:
 	var next_carried: Dictionary = data.get("carried", {})
