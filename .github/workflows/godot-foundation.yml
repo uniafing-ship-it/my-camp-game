@@ -9,6 +9,7 @@ on:
       - migration/godot-stage-4-combat
       - migration/godot-stage-5-mobile-ui
       - migration/godot-stage-6-progression-save
+      - migration/godot-stage-7-units-wildlife
     paths:
       - 'godot/**'
       - '.github/workflows/godot-foundation.yml'
@@ -23,38 +24,30 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Setup Godot 4.3
         uses: chickensoft-games/setup-godot@v2
         with:
           version: 4.3.0
           use-dotnet: false
           include-templates: true
-
       - name: Verify Godot
         run: godot --version
-
       - name: Import and parse project
         run: godot --headless --path godot --editor --quit
-
       - name: Stage 2 resource tests
         run: godot --headless --path godot --script res://tests/stage2_resources.gd
-
       - name: Stage 3 settlement tests
         run: godot --headless --path godot --script res://tests/stage3_settlement.gd
-
       - name: Stage 4 combat tests
         run: godot --headless --path godot --script res://tests/stage4_combat.gd
-
       - name: Stage 5 mobile UI tests
         run: godot --headless --path godot --script res://tests/stage5_mobile_ui.gd
-
       - name: Stage 6 progression and save tests
         run: godot --headless --path godot --script res://tests/stage6_progression_save.gd
-
+      - name: Stage 7 unit and wildlife tests
+        run: godot --headless --path godot --script res://tests/stage7_units_wildlife.gd
       - name: Boot main scene
         run: godot --headless --path godot --quit-after 8
-
       - name: Export Web build
         run: |
           mkdir -p godot/build/web
@@ -62,7 +55,6 @@ jobs:
           test -f godot/build/web/index.html
           test -f godot/build/web/index.wasm
           test -f godot/build/web/index.pck
-
       - name: Upload Web preview artifact
         uses: actions/upload-artifact@v4
         with:

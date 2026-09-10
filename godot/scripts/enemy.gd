@@ -1,186 +1,98 @@
 extends CharacterBody3D
-class_name CampEnemy
+class_name EnemyCombatant
 
 signal health_changed(current: int, maximum: int)
 signal died(enemy: Node)
 
 @export var max_health: int = 55
-@export var move_speed: float = 3.0
-@export var acceleration: float = 12.0
-@export var gravity_force: float = 24.0
-@export var attack_damage: int = 12
-@export var attack_range: float = 1.65
+@export var move_speed: float = 2.9
+@export var attack_damage: int = 10
 @export var attack_interval: float = 1.05
 @export var aggro_radius: float = 11.5
-@export var camp_attack_radius: float = 5.3
+@export var camp_attack_range: float = 2.1
+@export var unit_attack_range: float = 1.65
 @export var reward_gold: int = 1
 
 var health: int = 0
-var _attack_cooldown := 0.0
+var _attack_left := 0.0
 var _dead := false
-var _player = null
-var _raid_manager = null
-var _resource_manager = null
 var _visual: Node3D
+var _target: Node3D = null
 
 func _ready() -> void:
 	add_to_group("enemies")
 	health = max_health
-	_player = get_tree().get_first_node_in_group("player_combat")
-	_raid_manager = get_tree().get_first_node_in_group("raid_manager")
-	_resource_manager = get_tree().get_first_node_in_group("resource_manager")
 	_build_visual()
 	health_changed.emit(health, max_health)
 
 func _physics_process(delta: float) -> void:
-	if _dead:
-		return
-	_attack_cooldown = maxf(0.0, _attack_cooldown - delta)
-	if not is_on_floor():
-		velocity.y -= gravity_force * delta
-	else:
-		velocity.y = -0.5
-
-	if _player == null or not is_instance_valid(_player):
-		_player = get_tree().get_first_node_in_group("player_combat")
-	if _raid_manager == null or not is_instance_valid(_raid_manager):
-		_raid_manager = get_tree().get_first_node_in_group("raid_manager")
-
-	var target_position := Vector3.ZERO
-	var target_player := false
-	if _player != null and _player.has_method("is_alive") and bool(_player.is_alive()):
-		var player_distance := global_position.distance_to(_player.global_position)
-		if player_distance <= aggro_radius:
-			target_position = _player.global_position
-			target_player = true
-
+	if _dead: return
+	_attack_left = maxf(0.0, _attack_left - delta)
+	_target = _choose_target()
+	var camp_target := Vector3.ZERO
+	var target_position := camp_target
+	var attack_range := camp_attack_range
+	var target_is_unit := false
+	if _target != null and is_instance_valid(_target):
+		target_position = _target.global_position
+		attack_range = unit_attack_range
+		target_is_unit = true
 	var flat_target := Vector3(target_position.x, global_position.y, target_position.z)
 	var distance := global_position.distance_to(flat_target)
 	var desired := Vector3.ZERO
-	var stopping_distance := attack_range if target_player else camp_attack_radius
-	if distance > stopping_distance:
+	if distance > attack_range:
 		desired = (flat_target - global_position).normalized()
-		velocity.x = move_toward(velocity.x, desired.x * move_speed, acceleration * delta)
-		velocity.z = move_toward(velocity.z, desired.z * move_speed, acceleration * delta)
-		if _visual != null:
-			_visual.rotation.y = lerp_angle(_visual.rotation.y, atan2(desired.x, desired.z), minf(1.0, delta * 7.0))
 	else:
-		velocity.x = move_toward(velocity.x, 0.0, acceleration * delta)
-		velocity.z = move_toward(velocity.z, 0.0, acceleration * delta)
-		_try_attack(target_player)
-
+		_try_attack(target_is_unit)
+	velocity.x = move_toward(velocity.x, desired.x * move_speed, 10.0 * delta)
+	velocity.z = move_toward(velocity.z, desired.z * move_speed, 10.0 * delta)
+	if not is_on_floor(): velocity.y -= 24.0 * delta
+	else: velocity.y = -0.5
+	if desired.length_squared() > 0.02 and _visual != null:
+		_visual.rotation.y = lerp_angle(_visual.rotation.y, atan2(desired.x, desired.z), minf(1.0, delta * 8.0))
 	move_and_slide()
 
-func _try_attack(target_player: bool) -> void:
-	if _attack_cooldown > 0.0:
+func _choose_target() -> Node3D:
+	var best: Node3D = null
+	var best_d := aggro_radius
+	var player = get_tree().get_first_node_in_group("player_combat")
+	if player is Node3D and player.has_method("is_alive") and bool(player.is_alive()):
+		var d := global_position.distance_to(player.global_position)
+		if d < best_d: best = player; best_d = d
+	for unit in get_tree().get_nodes_in_group("camp_defenders"):
+		if not (unit is Node3D): continue
+		if unit.has_method("is_alive") and not bool(unit.is_alive()): continue
+		var d := global_position.distance_to(unit.global_position)
+		if d < best_d: best = unit; best_d = d
+	return best
+
+func _try_attack(target_is_unit: bool) -> void:
+	if _attack_left > 0.0: return
+	_attack_left = attack_interval
+	if target_is_unit and _target != null and is_instance_valid(_target) and _target.has_method("take_damage"):
+		_target.take_damage(attack_damage, global_position)
 		return
-	_attack_cooldown = attack_interval
-	if target_player and _player != null and _player.has_method("take_damage"):
-		_player.take_damage(attack_damage, global_position)
-	elif _raid_manager != null and _raid_manager.has_method("damage_camp"):
-		_raid_manager.damage_camp(attack_damage)
+	var raid = get_tree().get_first_node_in_group("raid_manager")
+	if raid != null and raid.has_method("damage_camp"): raid.damage_camp(attack_damage)
 
 func take_damage(amount: int, _source_position: Vector3 = Vector3.ZERO) -> int:
-	if _dead or amount <= 0:
-		return health
-	health = maxi(0, health - amount)
-	health_changed.emit(health, max_health)
-	if health <= 0:
-		_die()
+	if _dead or amount <= 0: return health
+	health = maxi(0, health - amount); health_changed.emit(health, max_health)
+	if health <= 0: _die()
 	return health
-
-func is_alive() -> bool:
-	return not _dead and health > 0
-
+func is_alive() -> bool: return not _dead and health > 0
 func _die() -> void:
-	if _dead:
-		return
+	if _dead: return
 	_dead = true
-	velocity = Vector3.ZERO
-	if reward_gold > 0:
-		if _resource_manager == null or not is_instance_valid(_resource_manager):
-			_resource_manager = get_tree().get_first_node_in_group("resource_manager")
-		if _resource_manager != null and _resource_manager.has_method("add_stored"):
-			_resource_manager.add_stored("gold", reward_gold)
-			if _resource_manager.has_method("report_activity"):
-				_resource_manager.report_activity("Враг повержен: +%d золота" % reward_gold)
-	died.emit(self)
-	queue_free()
+	var resources = get_tree().get_first_node_in_group("resource_manager")
+	if resources != null and reward_gold > 0: resources.add_stored("gold", reward_gold)
+	died.emit(self); queue_free()
 
 func _build_visual() -> void:
-	var collision := CollisionShape3D.new()
-	var shape := CapsuleShape3D.new()
-	shape.radius = 0.42
-	shape.height = 1.7
-	collision.shape = shape
-	collision.position.y = 0.85
-	add_child(collision)
-
-	_visual = Node3D.new()
-	_visual.name = "Visual"
-	add_child(_visual)
-
-	var body := MeshInstance3D.new()
-	var body_mesh := CapsuleMesh.new()
-	body_mesh.radius = 0.43
-	body_mesh.height = 1.25
-	body_mesh.radial_segments = 12
-	body_mesh.rings = 6
-	body.mesh = body_mesh
-	body.position.y = 0.78
-	body.material_override = _material(Color(0.20, 0.39, 0.13), 0.7)
-	_visual.add_child(body)
-
-	var head := MeshInstance3D.new()
-	var head_mesh := SphereMesh.new()
-	head_mesh.radius = 0.31
-	head_mesh.height = 0.62
-	head_mesh.radial_segments = 12
-	head_mesh.rings = 6
-	head.mesh = head_mesh
-	head.position = Vector3(0.0, 1.58, 0.0)
-	head.material_override = _material(Color(0.36, 0.57, 0.20), 0.76)
-	_visual.add_child(head)
-
-	var shoulder := MeshInstance3D.new()
-	var shoulder_mesh := BoxMesh.new()
-	shoulder_mesh.size = Vector3(0.98, 0.18, 0.42)
-	shoulder.mesh = shoulder_mesh
-	shoulder.position = Vector3(0.0, 1.22, 0.0)
-	shoulder.material_override = _material(Color(0.13, 0.14, 0.12), 0.56, 0.14)
-	_visual.add_child(shoulder)
-
-	var club := MeshInstance3D.new()
-	var club_mesh := CylinderMesh.new()
-	club_mesh.top_radius = 0.08
-	club_mesh.bottom_radius = 0.12
-	club_mesh.height = 1.25
-	club_mesh.radial_segments = 8
-	club.mesh = club_mesh
-	club.position = Vector3(0.58, 0.88, 0.04)
-	club.rotation_degrees.z = -28.0
-	club.material_override = _material(Color(0.23, 0.12, 0.055), 0.94)
-	_visual.add_child(club)
-
-	for x in [-0.13, 0.13]:
-		var eye := MeshInstance3D.new()
-		var eye_mesh := SphereMesh.new()
-		eye_mesh.radius = 0.035
-		eye_mesh.height = 0.07
-		eye_mesh.radial_segments = 8
-		eye_mesh.rings = 4
-		eye.mesh = eye_mesh
-		eye.position = Vector3(x, 1.64, 0.285)
-		var eye_material := _material(Color(1.0, 0.16, 0.05), 0.3)
-		eye_material.emission_enabled = true
-		eye_material.emission = Color(0.8, 0.03, 0.01)
-		eye_material.emission_energy_multiplier = 1.7
-		eye.material_override = eye_material
-		_visual.add_child(eye)
-
-func _material(color: Color, roughness: float = 0.8, metallic: float = 0.0) -> StandardMaterial3D:
-	var material := StandardMaterial3D.new()
-	material.albedo_color = color
-	material.roughness = roughness
-	material.metallic = metallic
-	return material
+	var collision := CollisionShape3D.new(); var shape := CapsuleShape3D.new(); shape.radius=0.44; shape.height=1.7; collision.shape=shape; collision.position.y=0.85; add_child(collision)
+	_visual=Node3D.new(); add_child(_visual)
+	var body:=MeshInstance3D.new(); var bm:=CapsuleMesh.new(); bm.radius=0.43; bm.height=1.25; bm.radial_segments=10; bm.rings=5; body.mesh=bm; body.position.y=0.78; body.material_override=_mat(Color(0.25,0.42,0.15)); _visual.add_child(body)
+	var head:=MeshInstance3D.new(); var hm:=SphereMesh.new(); hm.radius=0.31; hm.height=0.62; hm.radial_segments=10; hm.rings=5; head.mesh=hm; head.position.y=1.63; head.material_override=_mat(Color(0.44,0.62,0.24)); _visual.add_child(head)
+	var weapon:=MeshInstance3D.new(); var wm:=BoxMesh.new(); wm.size=Vector3(0.10,0.9,0.13); weapon.mesh=wm; weapon.position=Vector3(0.5,0.78,0); weapon.rotation_degrees.z=-25; weapon.material_override=_mat(Color(0.43,0.33,0.22),0.65,0.12); _visual.add_child(weapon)
+func _mat(color: Color, roughness:=0.8, metallic:=0.0) -> StandardMaterial3D:
+	var m:=StandardMaterial3D.new(); m.albedo_color=color; m.roughness=roughness; m.metallic=metallic; return m

@@ -8,27 +8,35 @@ signal activity_changed(text: String)
 
 const BASE_CARRY_CAPACITY := 30
 const RESEARCH := {
-	"axes": {"name": "ЗАТОЧЕННЫЕ ТОПОРЫ", "description": "+1 ко всей добыче", "cost": {"gold": 30, "wood": 100}},
-	"bags": {"name": "КРЕПКИЕ МЕШКИ", "description": "+6 к рюкзаку", "cost": {"gold": 25, "wood": 80}},
+	"axes": {"name":"ЗАТОЧЕННЫЕ ТОПОРЫ", "description":"+1 ко всей добыче", "cost":{"gold":30,"wood":100}},
+	"bags": {"name":"КРЕПКИЕ МЕШКИ", "description":"+6 к рюкзаку", "cost":{"gold":25,"wood":80}},
+	"armor": {"name":"КОЛЬЧУГИ", "description":"+3 HP бойцам", "cost":{"gold":40,"pelts":5}},
+	"hounds": {"name":"БОЕВЫЕ ПСЫ", "description":"псы +2 урона, найм дешевле по шкурам", "cost":{"gold":45,"pelts":5}},
 }
-const RESEARCH_ORDER := ["axes", "bags"]
+const RESEARCH_ORDER := ["axes", "bags", "armor", "hounds"]
 const QUESTS := [
 	{"id":"wood30", "title":"Сдай на склад 30 🌲", "type":"gathered", "key":"wood", "target":30, "reward":{"food":10}},
 	{"id":"lumber", "title":"Построй ЛЕСОПИЛКУ", "type":"building", "key":"lumber_camp", "target":1, "reward":{"wood":30}},
-	{"id":"food20", "title":"Собери 20 🍓", "type":"gathered", "key":"food", "target":20, "reward":{"gold":10}},
+	{"id":"food20", "title":"Собери 20 🍓 (кусты/охота)", "type":"gathered", "key":"food", "target":20, "reward":{"gold":10}},
+	{"id":"bear1", "title":"Убей медведя 🐻", "type":"animal", "key":"bear", "target":1, "reward":{"gold":10}},
 	{"id":"workers2", "title":"Найми 2 крестьян", "type":"workers", "key":"", "target":2, "reward":{"stone":30}},
-	{"id":"kills5", "title":"Победи 5 врагов", "type":"kills", "key":"", "target":5, "reward":{"gold":12}},
+	{"id":"boar1", "title":"Убей кабана 🐗", "type":"animal", "key":"boar", "target":1, "reward":{"food":20}},
+	{"id":"carc3", "title":"Разделай 3 туши 🔪", "type":"carcasses", "key":"", "target":3, "reward":{"gold":20}},
+	{"id":"deer1", "title":"Убей оленя 🦌", "type":"animal", "key":"deer", "target":1, "reward":{"food":20}},
 ]
 
 var researched: Array[String] = []
 var quest_index: int = 0
-var gathered: Dictionary = {"wood":0, "stone":0, "food":0, "gold":0}
+var gathered: Dictionary = {"wood":0, "stone":0, "food":0, "gold":0, "pelts":0}
 var kills: int = 0
 var upgrades: int = 0
+var animal_kills: Dictionary = {"bear":0, "boar":0, "deer":0, "rabbit":0}
+var carcasses_skinned: int = 0
 var last_activity: String = "Выполняй задания и открывай исследования."
 
 var _resource_manager = null
 var _settlement_manager = null
+var _wildlife_manager = null
 var _scan_accum := 0.0
 
 func _ready() -> void:
@@ -40,6 +48,7 @@ func _process(delta: float) -> void:
 	if _scan_accum >= 0.45:
 		_scan_accum = 0.0
 		_bind_dynamic_sources()
+		_bind_wildlife()
 		_update_quest()
 
 func _bind() -> void:
@@ -53,6 +62,7 @@ func _bind() -> void:
 		if _settlement_manager.has_signal("settlement_changed") and not _settlement_manager.is_connected("settlement_changed", settlement_cb):
 			_settlement_manager.connect("settlement_changed", settlement_cb)
 	_bind_dynamic_sources()
+	_bind_wildlife()
 	_apply_research_effects()
 	_emit_snapshot()
 
@@ -60,15 +70,27 @@ func _bind_dynamic_sources() -> void:
 	for node in get_tree().get_nodes_in_group("harvestables"):
 		if node == null or not is_instance_valid(node) or not node.has_signal("harvested"):
 			continue
-		var cb := Callable(self, "_on_harvested")
-		if not node.is_connected("harvested", cb):
-			node.connect("harvested", cb)
+		var harvest_cb := Callable(self, "_on_harvested")
+		if not node.is_connected("harvested", harvest_cb):
+			node.connect("harvested", harvest_cb)
 	for enemy in get_tree().get_nodes_in_group("enemies"):
 		if enemy == null or not is_instance_valid(enemy) or not enemy.has_signal("died"):
 			continue
-		var cb := Callable(self, "_on_enemy_died")
-		if not enemy.is_connected("died", cb):
-			enemy.connect("died", cb)
+		var enemy_cb := Callable(self, "_on_enemy_died")
+		if not enemy.is_connected("died", enemy_cb):
+			enemy.connect("died", enemy_cb)
+
+func _bind_wildlife() -> void:
+	if _wildlife_manager == null or not is_instance_valid(_wildlife_manager):
+		_wildlife_manager = get_tree().get_first_node_in_group("wildlife_manager")
+	if _wildlife_manager == null:
+		return
+	var kill_cb := Callable(self, "_on_animal_killed")
+	if _wildlife_manager.has_signal("animal_killed") and not _wildlife_manager.is_connected("animal_killed", kill_cb):
+		_wildlife_manager.connect("animal_killed", kill_cb)
+	var carcass_cb := Callable(self, "_on_carcass_skinned")
+	if _wildlife_manager.has_signal("carcass_skinned") and not _wildlife_manager.is_connected("carcass_skinned", carcass_cb):
+		_wildlife_manager.connect("carcass_skinned", carcass_cb)
 
 func _on_harvested(resource_type: String, amount: int, _remaining: int) -> void:
 	if amount <= 0 or not gathered.has(resource_type):
@@ -79,6 +101,19 @@ func _on_harvested(resource_type: String, amount: int, _remaining: int) -> void:
 
 func _on_enemy_died(_enemy: Node) -> void:
 	kills += 1
+	_update_quest()
+	_emit_snapshot()
+
+func _on_animal_killed(kind: String, food: int, pelts: int) -> void:
+	if animal_kills.has(kind):
+		animal_kills[kind] = int(animal_kills[kind]) + 1
+	gathered["food"] = int(gathered["food"]) + maxi(0, food)
+	gathered["pelts"] = int(gathered["pelts"]) + maxi(0, pelts)
+	_update_quest()
+	_emit_snapshot()
+
+func _on_carcass_skinned(_kind: String) -> void:
+	carcasses_skinned += 1
 	_update_quest()
 	_emit_snapshot()
 
@@ -95,7 +130,7 @@ func can_research(research_id: String) -> bool:
 		return false
 	_bind_managers()
 	var cost: Dictionary = RESEARCH[research_id]["cost"]
-	return _resource_manager != null and _resource_manager.has_method("can_afford_stored") and bool(_resource_manager.can_afford_stored(cost))
+	return _resource_manager != null and bool(_resource_manager.can_afford_stored(cost))
 
 func research(research_id: String) -> bool:
 	if not can_research(research_id):
@@ -121,6 +156,12 @@ func get_harvest_bonus(_resource_type: String = "") -> int:
 func get_carry_bonus() -> int:
 	return 6 if researched.has("bags") else 0
 
+func get_unit_hp_bonus() -> int:
+	return 3 if researched.has("armor") else 0
+
+func get_dog_damage_bonus() -> int:
+	return 2 if researched.has("hounds") else 0
+
 func get_research_snapshot() -> Array:
 	var result: Array = []
 	for research_id in RESEARCH_ORDER:
@@ -137,7 +178,7 @@ func get_research_snapshot() -> Array:
 
 func get_current_quest() -> Dictionary:
 	if quest_index >= QUESTS.size():
-		return {"complete":true, "title":"Все доступные задания выполнены", "progress":"Свободная игра", "reward":{}}
+		return {"complete":true, "title":"Доступная цепочка заданий выполнена", "progress":"Следующие задания откроются с переносом новых систем", "reward":{}}
 	var quest: Dictionary = QUESTS[quest_index]
 	var value := _quest_value(quest)
 	var target := int(quest["target"])
@@ -159,6 +200,8 @@ func get_snapshot() -> Dictionary:
 		"gathered": gathered.duplicate(true),
 		"kills": kills,
 		"upgrades": upgrades,
+		"animal_kills": animal_kills.duplicate(true),
+		"carcasses_skinned": carcasses_skinned,
 		"last_activity": last_activity,
 	}
 
@@ -177,6 +220,10 @@ func import_state(data: Dictionary) -> void:
 		gathered[key] = maxi(0, int(saved_gathered.get(key, 0)))
 	kills = maxi(0, int(data.get("kills", 0)))
 	upgrades = maxi(0, int(data.get("upgrades", 0)))
+	var saved_animal_kills: Dictionary = data.get("animal_kills", {})
+	for kind in animal_kills.keys():
+		animal_kills[kind] = maxi(0, int(saved_animal_kills.get(kind, 0)))
+	carcasses_skinned = maxi(0, int(data.get("carcasses_skinned", 0)))
 	last_activity = str(data.get("last_activity", last_activity))
 	_apply_research_effects()
 	_emit_snapshot()
@@ -215,14 +262,17 @@ func _quest_value(quest: Dictionary) -> int:
 				return int(_settlement_manager.worker_count)
 		"kills":
 			return kills
+		"animal":
+			return int(animal_kills.get(str(quest["key"]), 0))
+		"carcasses":
+			return carcasses_skinned
 	return 0
 
 func _apply_research_effects() -> void:
 	_bind_managers()
 	if _resource_manager != null:
 		_resource_manager.carry_capacity = BASE_CARRY_CAPACITY + get_carry_bonus()
-		if _resource_manager.has_signal("inventory_changed"):
-			_resource_manager.inventory_changed.emit(_resource_manager.carried.duplicate(true), _resource_manager.stored.duplicate(true))
+		_resource_manager.inventory_changed.emit(_resource_manager.carried.duplicate(true), _resource_manager.stored.duplicate(true))
 
 func _bind_managers() -> void:
 	if _resource_manager == null or not is_instance_valid(_resource_manager):
@@ -241,9 +291,11 @@ func _emit_snapshot() -> void:
 func reset_for_test() -> void:
 	researched.clear()
 	quest_index = 0
-	gathered = {"wood":0, "stone":0, "food":0, "gold":0}
+	gathered = {"wood":0, "stone":0, "food":0, "gold":0, "pelts":0}
 	kills = 0
 	upgrades = 0
+	animal_kills = {"bear":0, "boar":0, "deer":0, "rabbit":0}
+	carcasses_skinned = 0
 	last_activity = ""
 	_apply_research_effects()
 	_emit_snapshot()
