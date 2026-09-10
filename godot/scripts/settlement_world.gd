@@ -6,8 +6,6 @@ const BUILDING_POSITIONS := {
 	"lumber_camp": Vector3(8.2, 0.0, 0.0),
 	"quarry": Vector3(-7.5, 0.0, -5.5),
 	"fishing_hut": Vector3(-8.8, 0.0, 8.4),
-	"hunting_lodge": Vector3(8.8, 0.0, 7.4),
-	"kennel": Vector3(8.8, 0.0, -7.8),
 }
 
 var _settlement_manager = null
@@ -63,8 +61,6 @@ func _rebuild_building(building_id: String, level: int) -> void:
 			"lumber_camp": _build_lumber_camp(root, level)
 			"quarry": _build_quarry(root, level)
 			"fishing_hut": _build_fishing_hut(root, level)
-			"hunting_lodge": _build_hunting_lodge(root, level)
-			"kennel": _build_kennel(root, level)
 	_build_label(root, building_id, level)
 
 func _build_foundation(root: Node3D, building_id: String, level: int) -> void:
@@ -186,64 +182,9 @@ func _build_fishing_hut(root: Node3D, level: int) -> void:
 	lantern.omni_range = 4.0
 	root.add_child(lantern)
 
-func _build_hunting_lodge(root: Node3D, level: int) -> void:
-	var floor := _box(Vector3(3.8, 0.18, 3.0), Vector3(0.0, 0.2, 0.0), Color(0.30, 0.19, 0.09))
-	root.add_child(floor)
-	var cabin := _box(Vector3(2.8, 1.55, 2.1), Vector3(-0.15, 1.0, -0.2), Color(0.39, 0.25, 0.12))
-	root.add_child(cabin)
-	var roof := _box(Vector3(3.2, 0.24, 2.5), Vector3(-0.15, 1.88, -0.2), Color(0.16, 0.14, 0.10))
-	roof.rotation_degrees.z = -7.0
-	root.add_child(roof)
-	for x in [-1.35, 1.35]:
-		var rack := _box(Vector3(0.12, 1.5, 0.12), Vector3(x, 0.82, 1.0), Color(0.30, 0.18, 0.08))
-		root.add_child(rack)
-	var beam := _box(Vector3(2.8, 0.12, 0.12), Vector3(0.0, 1.45, 1.0), Color(0.30, 0.18, 0.08))
-	root.add_child(beam)
-	var hide := _box(Vector3(1.15, 0.06, 0.85), Vector3(0.0, 1.0, 1.06), Color(0.46, 0.30, 0.17))
-	hide.rotation_degrees.x = 90.0
-	root.add_child(hide)
-	var lantern := OmniLight3D.new()
-	lantern.position = Vector3(0.9, 1.45, 0.9)
-	lantern.light_color = Color(1.0, 0.57, 0.26)
-	lantern.light_energy = 0.9 + float(level) * 0.15
-	lantern.omni_range = 3.8
-	root.add_child(lantern)
-
-func _build_kennel(root: Node3D, level: int) -> void:
-	var yard := _box(Vector3(3.9, 0.14, 3.1), Vector3(0.0, 0.18, 0.0), Color(0.27, 0.22, 0.14))
-	root.add_child(yard)
-	var hut := _box(Vector3(1.75, 1.15, 1.65), Vector3(-0.65, 0.78, -0.35), Color(0.39, 0.25, 0.12))
-	root.add_child(hut)
-	var roof := _box(Vector3(2.05, 0.20, 1.95), Vector3(-0.65, 1.45, -0.35), Color(0.15, 0.13, 0.10))
-	roof.rotation_degrees.z = 8.0
-	root.add_child(roof)
-	for x in [-1.65, 1.65]:
-		for z in [-1.2, 1.2]:
-			var post := _box(Vector3(0.10, 1.05, 0.10), Vector3(x, 0.58, z), Color(0.33, 0.21, 0.10))
-			root.add_child(post)
-	for z in [-1.2, 1.2]:
-		var rail := _box(Vector3(3.4, 0.09, 0.09), Vector3(0.0, 0.82, z), Color(0.33, 0.21, 0.10))
-		root.add_child(rail)
-	var bowl := MeshInstance3D.new()
-	var bowl_mesh := CylinderMesh.new()
-	bowl_mesh.top_radius = 0.42
-	bowl_mesh.bottom_radius = 0.31
-	bowl_mesh.height = 0.16
-	bowl_mesh.radial_segments = 14
-	bowl.mesh = bowl_mesh
-	bowl.position = Vector3(0.85, 0.23, 0.55)
-	bowl.material_override = _material(Color(0.30, 0.32, 0.31), 0.6)
-	root.add_child(bowl)
-
 func _build_label(root: Node3D, building_id: String, level: int) -> void:
 	var label := Label3D.new()
-	var names := {
-		"lumber_camp": "Лесопилка",
-		"quarry": "Каменоломня",
-		"fishing_hut": "Рыбацкая хижина",
-		"hunting_lodge": "Охотничья изба",
-		"kennel": "Псарня",
-	}
+	var names := {"lumber_camp": "Лесопилка", "quarry": "Каменоломня", "fishing_hut": "Рыбацкая хижина"}
 	label.text = "%s · %s" % [str(names.get(building_id, building_id)), "проект" if level <= 0 else "ур.%d" % level]
 	label.position = Vector3(0.0, 2.9 if level > 0 else 1.8, 0.0)
 	label.font_size = 30
