@@ -1,26 +1,56 @@
 extends CharacterBody3D
 
+signal health_changed(current: int, maximum: int)
+signal died()
+signal respawned()
+signal attacked(hit: bool)
+
 @export var move_speed: float = 6.0
 @export var sprint_speed: float = 9.0
 @export var acceleration: float = 18.0
 @export var gravity_force: float = 24.0
 @export var look_sensitivity: float = 0.004
 @export var auto_harvest_enabled: bool = true
+@export var max_health: int = 100
+@export var attack_damage: int = 24
+@export var attack_range: float = 2.35
+@export var attack_cooldown: float = 0.58
+@export var invulnerability_time: float = 0.36
+@export var respawn_delay: float = 2.5
 
 @onready var visual: Node3D = $Visual
 @onready var camera_pivot: Node3D = $CameraPivot
 
+var health: int = 0
 var _joystick: Node = null
 var _resource_manager = null
 var _pitch := deg_to_rad(-17.0)
 var _yaw := 0.0
+var _attack_cd := 0.0
+var _invulnerability := 0.0
+var _attack_anim := 0.0
+var _dead := false
+var _spawn_position := Vector3.ZERO
+var _sword_pivot: Node3D = null
 
 func _ready() -> void:
+	add_to_group("player_combat")
 	_joystick = get_tree().get_first_node_in_group("mobile_joystick")
 	_resource_manager = get_tree().get_first_node_in_group("resource_manager")
 	_yaw = rotation.y
+	health = max_health
+	_spawn_position = global_position
+	_sword_pivot = get_node_or_null("Visual/SwordPivot")
+	health_changed.emit(health, max_health)
 
 func _physics_process(delta: float) -> void:
+	_attack_cd = maxf(0.0, _attack_cd - delta)
+	_invulnerability = maxf(0.0, _invulnerability - delta)
+	_update_attack_visual(delta)
+	if _dead:
+		velocity = Vector3.ZERO
+		return
+
 	var input_vec := Vector2.ZERO
 	if Input.is_key_pressed(KEY_A) or Input.is_key_pressed(KEY_LEFT): input_vec.x -= 1.0
 	if Input.is_key_pressed(KEY_D) or Input.is_key_pressed(KEY_RIGHT): input_vec.x += 1.0
@@ -62,10 +92,89 @@ func _physics_process(delta: float) -> void:
 
 	if desired_dir.length_squared() > 0.02:
 		var target_angle := atan2(desired_dir.x, desired_dir.z)
-		visual.rotation.y = lerp_angle(visual.rotation.y, target_angle, min(1.0, delta * 10.0))
+		visual.rotation.y = lerp_angle(visual.rotation.y, target_angle, minf(1.0, delta * 10.0))
 
 	move_and_slide()
 	_process_resource_gameplay()
+
+func request_attack() -> bool:
+	return perform_attack()
+
+func perform_attack() -> bool:
+	if _dead or _attack_cd > 0.0:
+		return false
+	_attack_cd = attack_cooldown
+	_attack_anim = 0.22
+	var nearest = null
+	var nearest_distance := INF
+	for candidate in get_tree().get_nodes_in_group("enemies"):
+		if not (candidate is Node3D):
+			continue
+		if candidate.has_method("is_alive") and not bool(candidate.is_alive()):
+			continue
+		var distance := global_position.distance_to(candidate.global_position)
+		if distance <= attack_range and distance < nearest_distance:
+			nearest = candidate
+			nearest_distance = distance
+	var hit := false
+	if nearest != null and nearest.has_method("take_damage"):
+		nearest.take_damage(attack_damage, global_position)
+		hit = true
+	attacked.emit(hit)
+	return hit
+
+func take_damage(amount: int, source_position: Vector3 = Vector3.ZERO) -> int:
+	if _dead or amount <= 0 or _invulnerability > 0.0:
+		return health
+	_invulnerability = invulnerability_time
+	health = maxi(0, health - amount)
+	if source_position != Vector3.ZERO:
+		var away := global_position - source_position
+		away.y = 0.0
+		if away.length_squared() > 0.01:
+			away = away.normalized()
+			velocity.x += away.x * 3.5
+			velocity.z += away.z * 3.5
+	health_changed.emit(health, max_health)
+	if health <= 0:
+		_die()
+	return health
+
+func heal(amount: int) -> int:
+	if amount <= 0 or _dead:
+		return health
+	health = mini(max_health, health + amount)
+	health_changed.emit(health, max_health)
+	return health
+
+func is_alive() -> bool:
+	return not _dead and health > 0
+
+func _die() -> void:
+	if _dead:
+		return
+	_dead = true
+	velocity = Vector3.ZERO
+	died.emit()
+	await get_tree().create_timer(respawn_delay).timeout
+	if not is_inside_tree():
+		return
+	global_position = _spawn_position
+	health = max_health
+	_dead = false
+	_invulnerability = 1.0
+	health_changed.emit(health, max_health)
+	respawned.emit()
+
+func _update_attack_visual(delta: float) -> void:
+	if _sword_pivot == null:
+		return
+	if _attack_anim > 0.0:
+		_attack_anim = maxf(0.0, _attack_anim - delta)
+		var t := 1.0 - _attack_anim / 0.22
+		_sword_pivot.rotation_degrees.z = -34.0 + sin(t * PI) * 88.0
+	else:
+		_sword_pivot.rotation_degrees.z = -34.0
 
 func _process_resource_gameplay() -> void:
 	if _resource_manager == null:
@@ -98,7 +207,10 @@ func _process_resource_gameplay() -> void:
 		nearest.try_harvest(_resource_manager)
 
 func _unhandled_input(event: InputEvent) -> void:
-	if event is InputEventScreenDrag:
+	if event is InputEventKey and event.pressed and not event.echo:
+		if event.keycode == KEY_SPACE or event.keycode == KEY_F:
+			request_attack()
+	elif event is InputEventScreenDrag:
 		if event.position.x < get_viewport().get_visible_rect().size.x * 0.35:
 			return
 		_apply_look(event.relative)
