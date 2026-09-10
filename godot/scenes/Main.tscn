@@ -1,4 +1,4 @@
-[gd_scene load_steps=11 format=3]
+[gd_scene load_steps=13 format=3]
 
 [ext_resource type="Script" path="res://scripts/world.gd" id="1_world"]
 [ext_resource type="PackedScene" path="res://scenes/player/Player.tscn" id="2_player"]
@@ -9,6 +9,8 @@
 [ext_resource type="Script" path="res://scripts/settlement_manager.gd" id="7_settlement_manager"]
 [ext_resource type="Script" path="res://scripts/settlement_world.gd" id="8_settlement_world"]
 [ext_resource type="Script" path="res://scripts/settlement_hud.gd" id="9_settlement_hud"]
+[ext_resource type="Script" path="res://scripts/wave_manager.gd" id="10_wave_manager"]
+[ext_resource type="Script" path="res://scripts/combat_hud.gd" id="11_combat_hud"]
 
 [sub_resource type="StyleBoxFlat" id="Style_resource_panel"]
 bg_color = Color(0.035, 0.07, 0.052, 0.88)
@@ -39,6 +41,15 @@ script = ExtResource("5_resource_world")
 
 [node name="SettlementGameplay" type="Node3D" parent="."]
 script = ExtResource("8_settlement_world")
+
+[node name="WaveManager" type="Node3D" parent="."]
+script = ExtResource("10_wave_manager")
+first_night_delay = 180.0
+wave_interval = 90.0
+night_duration = 35.0
+base_enemy_count = 3
+enemies_per_wave = 2
+camp_max_health = 300
 
 [node name="Player" parent="." instance=ExtResource("2_player")]
 position = Vector3(0, 0, 7)
@@ -104,6 +115,16 @@ grow_vertical = 2
 mouse_filter = 2
 script = ExtResource("9_settlement_hud")
 
+[node name="CombatHUD" type="Control" parent="UI"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("11_combat_hud")
+
 [node name="MobileJoystick" type="Control" parent="UI"]
 offset_left = 24.0
 offset_top = -184.0
@@ -123,4 +144,4 @@ offset_right = 270.0
 offset_bottom = 44.0
 theme_override_colors/font_color = Color(0.93, 0.89, 0.76, 0.92)
 theme_override_font_sizes/font_size = 14
-text = "MY CAMP GAME · GODOT · STAGE 3"
+text = "MY CAMP GAME · GODOT · STAGE 4"
