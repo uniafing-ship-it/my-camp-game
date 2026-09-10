@@ -2,6 +2,8 @@ extends Control
 
 var _manager = null
 var _resource_manager = null
+var _panel: PanelContainer
+var _toggle: Button
 var _title: Label
 var _status: Label
 var _buttons: Dictionary = {}
@@ -19,31 +21,44 @@ func _process(delta: float) -> void:
 		_refresh()
 
 func _build_ui() -> void:
-	set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	offset_left = -310.0
-	offset_top = 54.0
-	offset_right = -16.0
-	offset_bottom = 430.0
-	mouse_filter = Control.MOUSE_FILTER_STOP
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
 
-	var panel := PanelContainer.new()
-	panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_toggle = Button.new()
+	_toggle.text = "ЛАГЕРЬ"
+	_toggle.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	_toggle.offset_left = -126.0
+	_toggle.offset_top = 16.0
+	_toggle.offset_right = -16.0
+	_toggle.offset_bottom = 58.0
+	_toggle.mouse_filter = Control.MOUSE_FILTER_STOP
+	_toggle.pressed.connect(_toggle_panel)
+	add_child(_toggle)
+
+	_panel = PanelContainer.new()
+	_panel.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	_panel.offset_left = -310.0
+	_panel.offset_top = 64.0
+	_panel.offset_right = -16.0
+	_panel.offset_bottom = 438.0
+	_panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	_panel.visible = false
 	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.035, 0.065, 0.05, 0.92)
+	style.bg_color = Color(0.035, 0.065, 0.05, 0.94)
 	style.border_color = Color(0.68, 0.55, 0.30, 0.88)
 	style.set_border_width_all(1)
 	style.set_corner_radius_all(12)
-	style.shadow_color = Color(0, 0, 0, 0.35)
+	style.shadow_color = Color(0, 0, 0, 0.38)
 	style.shadow_size = 7
-	panel.add_theme_stylebox_override("panel", style)
-	add_child(panel)
+	_panel.add_theme_stylebox_override("panel", style)
+	add_child(_panel)
 
 	var margin := MarginContainer.new()
 	margin.add_theme_constant_override("margin_left", 12)
 	margin.add_theme_constant_override("margin_top", 10)
 	margin.add_theme_constant_override("margin_right", 12)
 	margin.add_theme_constant_override("margin_bottom", 10)
-	panel.add_child(margin)
+	_panel.add_child(margin)
 
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 6)
@@ -73,6 +88,10 @@ func _build_ui() -> void:
 	_status.add_theme_font_size_override("font_size", 13)
 	_status.add_theme_color_override("font_color", Color(0.78, 0.84, 0.78))
 	box.add_child(_status)
+
+func _toggle_panel() -> void:
+	_panel.visible = not _panel.visible
+	_toggle.text = "ЗАКРЫТЬ" if _panel.visible else "ЛАГЕРЬ"
 
 func _bind() -> void:
 	_manager = get_tree().get_first_node_in_group("settlement_manager")
