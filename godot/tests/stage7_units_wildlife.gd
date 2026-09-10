@@ -85,7 +85,7 @@ func _run() -> void:
 	if saver != null and units != null:
 		saver.delete_save()
 		_expect(saver.save_game(), "Stage 7 state saves with units")
-		var saved_foot := units.get_count("foot")
+		var saved_foot: int = int(units.get_count("foot"))
 		units.reset_for_test()
 		_expect(units.get_count("foot") == 0, "unit state can reset before load")
 		_expect(saver.load_game(), "Stage 7 state loads")
