@@ -7,6 +7,7 @@ on:
       - migration/godot-stage-2-resources
       - migration/godot-stage-3-settlement
       - migration/godot-stage-4-combat
+      - migration/godot-stage-5-mobile-ui
     paths:
       - 'godot/**'
       - '.github/workflows/godot-foundation.yml'
@@ -43,6 +44,9 @@ jobs:
 
       - name: Stage 4 combat tests
         run: godot --headless --path godot --script res://tests/stage4_combat.gd
+
+      - name: Stage 5 mobile UI tests
+        run: godot --headless --path godot --script res://tests/stage5_mobile_ui.gd
 
       - name: Boot main scene
         run: godot --headless --path godot --quit-after 8
