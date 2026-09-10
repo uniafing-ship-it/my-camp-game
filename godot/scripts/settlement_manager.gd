@@ -6,6 +6,7 @@ signal building_built(building_id: String, level: int)
 signal building_upgraded(building_id: String, level: int)
 signal worker_recruited(worker_id: int)
 signal activity_changed(text: String)
+signal state_imported(snapshot: Dictionary)
 
 const BUILDING_ORDER := ["lumber_camp", "quarry", "fishing_hut"]
 const BUILDING_NAMES := {
@@ -128,6 +129,26 @@ func get_snapshot() -> Dictionary:
 		"worker_capacity": get_worker_capacity(),
 		"activity": last_activity,
 	}
+
+func export_state() -> Dictionary:
+	return {
+		"buildings": buildings.duplicate(true),
+		"worker_count": worker_count,
+		"last_activity": last_activity,
+	}
+
+func import_state(data: Dictionary) -> void:
+	var saved_buildings: Dictionary = data.get("buildings", {})
+	buildings = {"town_hall":1, "lumber_camp":0, "quarry":0, "fishing_hut":0}
+	for building_id in buildings.keys():
+		var minimum := 1 if str(building_id) == "town_hall" else 0
+		buildings[building_id] = clampi(int(saved_buildings.get(building_id, minimum)), minimum, MAX_BUILDING_LEVEL)
+	worker_count = clampi(int(data.get("worker_count", 0)), 0, get_worker_capacity())
+	last_activity = str(data.get("last_activity", last_activity))
+	var snapshot := get_snapshot()
+	settlement_changed.emit(snapshot)
+	activity_changed.emit(last_activity)
+	state_imported.emit(snapshot)
 
 func _can_afford(cost: Dictionary) -> bool:
 	_bind_resource_manager()
