@@ -99,16 +99,13 @@ func load_game() -> bool:
 	if player.has_method("import_state"):
 		player.import_state(data.get("player", {}))
 
-	var settlement_world = get_tree().get_first_node_in_group("settlement_world")
-	if settlement_world != null and settlement_world.has_method("refresh_from_state"):
-		settlement_world.refresh_from_state()
 	last_save_unix = int(data.get("timestamp", 0))
 	return true
 
 func delete_save() -> bool:
 	if not FileAccess.file_exists(SAVE_PATH):
 		return true
-	return DirAccess.remove_absolute(SAVE_PATH) == OK
+	return DirAccess.remove_absolute(ProjectSettings.globalize_path(SAVE_PATH)) == OK
 
 func get_status_text() -> String:
 	if last_save_unix <= 0:
