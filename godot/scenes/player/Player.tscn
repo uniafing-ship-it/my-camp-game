@@ -1,4 +1,4 @@
-[gd_scene load_steps=7 format=3]
+[gd_scene load_steps=11 format=3]
 
 [ext_resource type="Script" path="res://scripts/player.gd" id="1_player"]
 
@@ -27,6 +27,25 @@ rings = 8
 albedo_color = Color(0.72, 0.48, 0.28, 1)
 roughness = 0.72
 
+[sub_resource type="BoxMesh" id="SwordBlade"]
+size = Vector3(0.09, 0.95, 0.11)
+
+[sub_resource type="StandardMaterial3D" id="SwordMaterial"]
+albedo_color = Color(0.64, 0.72, 0.78, 1)
+roughness = 0.23
+metallic = 0.76
+
+[sub_resource type="CylinderMesh" id="SwordHandle"]
+top_radius = 0.055
+bottom_radius = 0.065
+height = 0.36
+radial_segments = 10
+
+[sub_resource type="StandardMaterial3D" id="HandleMaterial"]
+albedo_color = Color(0.22, 0.12, 0.055, 1)
+roughness = 0.86
+metallic = 0.04
+
 [node name="Player" type="CharacterBody3D"]
 script = ExtResource("1_player")
 
@@ -46,6 +65,22 @@ cast_shadow = 1
 position = Vector3(0, 1.72, 0)
 mesh = SubResource("SphereMesh_head")
 material_override = SubResource("Material_head")
+cast_shadow = 1
+
+[node name="SwordPivot" type="Node3D" parent="Visual"]
+position = Vector3(0.53, 1.08, 0.05)
+rotation_degrees = Vector3(0, 0, -34)
+
+[node name="Blade" type="MeshInstance3D" parent="Visual/SwordPivot"]
+position = Vector3(0, 0.6, 0)
+mesh = SubResource("SwordBlade")
+material_override = SubResource("SwordMaterial")
+cast_shadow = 1
+
+[node name="Handle" type="MeshInstance3D" parent="Visual/SwordPivot"]
+position = Vector3(0, -0.05, 0)
+mesh = SubResource("SwordHandle")
+material_override = SubResource("HandleMaterial")
 cast_shadow = 1
 
 [node name="CameraPivot" type="Node3D" parent="."]
