@@ -95,7 +95,6 @@ func _build_ui() -> void:
 	for research_id in ["axes", "bags"]:
 		var button := Button.new()
 		button.custom_minimum_size = Vector2(0, 52)
-		button.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		button.pressed.connect(_on_research_pressed.bind(research_id))
 		box.add_child(button)
 		_research_buttons[research_id] = button
