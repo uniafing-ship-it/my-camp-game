@@ -49,6 +49,29 @@ func add_carried(resource_type: String, amount: int) -> int:
 	inventory_changed.emit(carried.duplicate(true), stored.duplicate(true))
 	return accepted
 
+func add_stored(resource_type: String, amount: int) -> int:
+	if amount <= 0 or not stored.has(resource_type):
+		return 0
+	stored[resource_type] = int(stored[resource_type]) + amount
+	inventory_changed.emit(carried.duplicate(true), stored.duplicate(true))
+	return amount
+
+func can_afford_stored(cost: Dictionary) -> bool:
+	for resource_type in cost.keys():
+		if not stored.has(resource_type):
+			return false
+		if int(stored.get(resource_type, 0)) < int(cost[resource_type]):
+			return false
+	return true
+
+func spend_stored(cost: Dictionary) -> bool:
+	if not can_afford_stored(cost):
+		return false
+	for resource_type in cost.keys():
+		stored[resource_type] = int(stored[resource_type]) - int(cost[resource_type])
+	inventory_changed.emit(carried.duplicate(true), stored.duplicate(true))
+	return true
+
 func deposit_all() -> Dictionary:
 	var moved: Dictionary = {}
 	var total_moved := 0

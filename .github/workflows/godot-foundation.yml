@@ -5,6 +5,7 @@ on:
     branches:
       - migration/godot-4
       - migration/godot-stage-2-resources
+      - migration/godot-stage-3-settlement
     paths:
       - 'godot/**'
       - '.github/workflows/godot-foundation.yml'
@@ -35,6 +36,9 @@ jobs:
 
       - name: Stage 2 resource tests
         run: godot --headless --path godot --script res://tests/stage2_resources.gd
+
+      - name: Stage 3 settlement tests
+        run: godot --headless --path godot --script res://tests/stage3_settlement.gd
 
       - name: Boot main scene
         run: godot --headless --path godot --quit-after 8
