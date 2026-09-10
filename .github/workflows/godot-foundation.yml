@@ -8,6 +8,7 @@ on:
       - migration/godot-stage-3-settlement
       - migration/godot-stage-4-combat
       - migration/godot-stage-5-mobile-ui
+      - migration/godot-stage-6-progression-save
     paths:
       - 'godot/**'
       - '.github/workflows/godot-foundation.yml'
@@ -47,6 +48,9 @@ jobs:
 
       - name: Stage 5 mobile UI tests
         run: godot --headless --path godot --script res://tests/stage5_mobile_ui.gd
+
+      - name: Stage 6 progression and save tests
+        run: godot --headless --path godot --script res://tests/stage6_progression_save.gd
 
       - name: Boot main scene
         run: godot --headless --path godot --quit-after 8
