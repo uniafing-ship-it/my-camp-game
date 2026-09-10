@@ -43,15 +43,23 @@ func _build_ui() -> void:
 	_drawer.mouse_filter = Control.MOUSE_FILTER_STOP
 	_drawer.add_theme_stylebox_override("panel", _style())
 	add_child(_drawer)
+
+	var scroll := ScrollContainer.new()
+	scroll.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_drawer.add_child(scroll)
 	var margin := MarginContainer.new()
+	margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	margin.add_theme_constant_override("margin_left", 14)
 	margin.add_theme_constant_override("margin_right", 14)
 	margin.add_theme_constant_override("margin_top", 12)
 	margin.add_theme_constant_override("margin_bottom", 12)
-	_drawer.add_child(margin)
+	scroll.add_child(margin)
 	var box := VBoxContainer.new()
+	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	box.add_theme_constant_override("separation", 6)
 	margin.add_child(box)
+
 	var title := Label.new()
 	title.text = "РАЗВИТИЕ"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -77,9 +85,9 @@ func _build_ui() -> void:
 	research_header.text = "📖 ИССЛЕДОВАНИЯ"
 	research_header.add_theme_font_size_override("font_size", 13)
 	box.add_child(research_header)
-	for research_id in ["axes", "bags", "armor", "hounds"]:
+	for research_id in ["axes", "bags", "armor", "arrows", "walls", "hounds"]:
 		var button := Button.new()
-		button.custom_minimum_size = Vector2(0, 48)
+		button.custom_minimum_size = Vector2(0, 46)
 		button.pressed.connect(_on_research_pressed.bind(research_id))
 		box.add_child(button)
 		_research_buttons[research_id] = button
@@ -105,9 +113,9 @@ func _layout() -> void:
 	_button.position = Vector2(size.x - 132.0, 190.0)
 	_button.size = Vector2(120.0, 40.0)
 	var width := minf(size.x - 24.0, 390.0)
-	var height := minf(size.y - 250.0, 500.0)
+	var height := minf(size.y - 250.0, 560.0)
 	_drawer.position = Vector2(size.x - width - 12.0, 238.0)
-	_drawer.size = Vector2(width, maxf(360.0, height))
+	_drawer.size = Vector2(width, maxf(330.0, height))
 
 func _bind() -> void:
 	_progression = get_tree().get_first_node_in_group("progression_manager")
@@ -158,16 +166,23 @@ func _refresh() -> void:
 func _on_research_pressed(research_id: String) -> void:
 	if _progression != null and _progression.research(research_id):
 		_refresh()
+
 func _on_save_pressed() -> void:
 	if _save_manager == null or not is_instance_valid(_save_manager):
 		_save_manager = get_tree().get_first_node_in_group("save_manager")
 	if _save_manager != null:
 		_save_manager.save_game()
-func _on_progression_changed(_snapshot: Dictionary) -> void: _refresh()
-func _on_save_completed(success: bool, _unix_time: int) -> void: _save_status.text = "Сохранено" if success else "Ошибка сохранения"
+
+func _on_progression_changed(_snapshot: Dictionary) -> void:
+	_refresh()
+
+func _on_save_completed(success: bool, _unix_time: int) -> void:
+	_save_status.text = "Сохранено" if success else "Ошибка сохранения"
+
 func _on_load_completed(found: bool) -> void:
 	_save_status.text = "Сохранение загружено" if found else "Новая игра · автосохранение включено"
 	_refresh()
+
 func _cost_text(cost: Dictionary) -> String:
 	var parts: Array[String] = []
 	var names := {"wood":"🌲", "stone":"🪨", "food":"🍓", "gold":"🪙", "pelts":"🧵"}
@@ -175,5 +190,6 @@ func _cost_text(cost: Dictionary) -> String:
 		if int(cost.get(key, 0)) > 0:
 			parts.append("%s%d" % [str(names[key]), int(cost[key])])
 	return " ".join(parts)
+
 func _reward_text(reward: Dictionary) -> String:
 	return "—" if reward.is_empty() else _cost_text(reward)
