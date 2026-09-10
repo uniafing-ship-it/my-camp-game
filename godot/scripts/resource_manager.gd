@@ -93,9 +93,29 @@ func report_activity(text: String) -> void:
 	last_activity = text
 	activity_changed.emit(last_activity)
 
+func export_state() -> Dictionary:
+	return {
+		"carried": carried.duplicate(true),
+		"stored": stored.duplicate(true),
+		"carry_capacity": carry_capacity,
+		"last_activity": last_activity,
+	}
+
+func import_state(data: Dictionary) -> void:
+	var next_carried: Dictionary = data.get("carried", {})
+	var next_stored: Dictionary = data.get("stored", {})
+	for resource_type in RESOURCE_TYPES:
+		carried[resource_type] = maxi(0, int(next_carried.get(resource_type, 0)))
+		stored[resource_type] = maxi(0, int(next_stored.get(resource_type, 0)))
+	carry_capacity = maxi(1, int(data.get("carry_capacity", carry_capacity)))
+	last_activity = str(data.get("last_activity", last_activity))
+	inventory_changed.emit(carried.duplicate(true), stored.duplicate(true))
+	activity_changed.emit(last_activity)
+
 func reset_for_test() -> void:
 	for resource_type in RESOURCE_TYPES:
 		carried[resource_type] = 0
 		stored[resource_type] = 0
+	carry_capacity = 30
 	last_activity = ""
 	inventory_changed.emit(carried.duplicate(true), stored.duplicate(true))
