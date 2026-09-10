@@ -80,6 +80,31 @@ func get_status_text() -> String:
 		return "НОЧЬ · ВОЛНА %d · %dс" % [wave_number, int(ceil(night_seconds_left))]
 	return "ДО НОЧИ %dс" % int(ceil(next_wave_in))
 
+func export_state() -> Dictionary:
+	return {
+		"wave_number": wave_number,
+		"next_wave_in": next_wave_in,
+		"night_seconds_left": night_seconds_left,
+		"camp_health": camp_health,
+		"is_night": is_night,
+		"is_game_over": is_game_over,
+	}
+
+func import_state(data: Dictionary) -> void:
+	_clear_enemies()
+	wave_number = maxi(0, int(data.get("wave_number", 0)))
+	next_wave_in = maxf(0.1, float(data.get("next_wave_in", first_night_delay)))
+	night_seconds_left = maxf(0.0, float(data.get("night_seconds_left", 0.0)))
+	camp_health = clampi(int(data.get("camp_health", camp_max_health)), 0, camp_max_health)
+	is_night = bool(data.get("is_night", false)) and night_seconds_left > 0.0
+	is_game_over = bool(data.get("is_game_over", false)) or camp_health <= 0
+	_set_world_night(is_night and not is_game_over)
+	if is_night and not is_game_over and wave_number > 0:
+		_spawn_enemies(get_enemy_count_for_wave(wave_number))
+	camp_health_changed.emit(camp_health, camp_max_health)
+	_last_timer_second = -1
+	_emit_timer(true)
+
 func _start_night() -> void:
 	wave_number += 1
 	is_night = true
@@ -112,6 +137,11 @@ func _spawn_enemies(count: int) -> void:
 		enemy.move_speed = minf(4.5, 2.8 + float(wave_number - 1) * 0.08)
 		enemy.reward_gold = 1
 		add_child(enemy)
+
+func _clear_enemies() -> void:
+	for enemy in get_tree().get_nodes_in_group("enemies"):
+		if enemy != null and is_instance_valid(enemy):
+			enemy.queue_free()
 
 func _set_world_night(enabled: bool) -> void:
 	var root_scene := get_tree().current_scene
@@ -147,9 +177,7 @@ func _emit_timer(force: bool) -> void:
 		timer_changed.emit(next_wave_in, is_night, night_seconds_left)
 
 func reset_for_test() -> void:
-	for enemy in get_tree().get_nodes_in_group("enemies"):
-		if is_instance_valid(enemy):
-			enemy.queue_free()
+	_clear_enemies()
 	wave_number = 0
 	next_wave_in = first_night_delay
 	night_seconds_left = 0.0

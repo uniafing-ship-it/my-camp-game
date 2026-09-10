@@ -32,7 +32,7 @@ func try_harvest(manager) -> int:
 	if now < _next_harvest_msec:
 		return 0
 	_next_harvest_msec = now + int(harvest_interval * 1000.0)
-	var requested := yield_amount
+	var requested := yield_amount + _harvest_bonus()
 	if not infinite_source:
 		requested = mini(requested, current_amount)
 	var accepted: int = int(manager.add_carried(resource_type, requested))
@@ -47,14 +47,20 @@ func try_harvest(manager) -> int:
 func take_for_worker(requested: int) -> int:
 	if requested <= 0 or _depleted:
 		return 0
-	var accepted := requested
+	var accepted := requested + _harvest_bonus()
 	if not infinite_source:
-		accepted = mini(requested, current_amount)
+		accepted = mini(accepted, current_amount)
 	if accepted <= 0:
 		return 0
 	_consume(accepted)
 	harvested.emit(resource_type, accepted, current_amount)
 	return accepted
+
+func _harvest_bonus() -> int:
+	var progression = get_tree().get_first_node_in_group("progression_manager")
+	if progression != null and progression.has_method("get_harvest_bonus"):
+		return maxi(0, int(progression.get_harvest_bonus(resource_type)))
+	return 0
 
 func _consume(amount: int) -> void:
 	if infinite_source:
