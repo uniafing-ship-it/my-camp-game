@@ -148,6 +148,10 @@ func import_state(data: Dictionary) -> void:
 	var snapshot := get_snapshot()
 	settlement_changed.emit(snapshot)
 	activity_changed.emit(last_activity)
+	for building_id in BUILDING_ORDER:
+		building_upgraded.emit(building_id, get_building_level(building_id))
+	for worker_id in range(1, worker_count + 1):
+		worker_recruited.emit(worker_id)
 	state_imported.emit(snapshot)
 
 func _can_afford(cost: Dictionary) -> bool:
