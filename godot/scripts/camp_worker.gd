@@ -15,6 +15,7 @@ var _resource_manager = null
 var _warehouse = null
 var _harvest_cooldown := 0.0
 var _visual: Node3D
+var _expedition_reserved := false
 
 func _ready() -> void:
 	add_to_group("camp_workers")
@@ -23,6 +24,8 @@ func _ready() -> void:
 	_build_visual()
 
 func _physics_process(delta: float) -> void:
+	if _expedition_reserved:
+		return
 	_harvest_cooldown = maxf(0.0, _harvest_cooldown - delta)
 	if _resource_manager == null:
 		_resource_manager = get_tree().get_first_node_in_group("resource_manager")
@@ -118,10 +121,33 @@ func _move_toward(target_position: Vector3, delta: float) -> void:
 	if direction.length_squared() < 0.01:
 		return
 	direction = direction.normalized()
-	velocity.x = move_toward(velocity.x, direction.x * move_speed, 10.0 * delta)
-	velocity.z = move_toward(velocity.z, direction.z * move_speed, 10.0 * delta)
+	var meta_speed := 1.0
+	var meta = get_tree().get_first_node_in_group("meta_progression_manager")
+	if meta != null and meta.has_method("get_worker_speed_multiplier"):
+		meta_speed = float(meta.get_worker_speed_multiplier())
+	var effective_speed := move_speed * meta_speed
+	velocity.x = move_toward(velocity.x, direction.x * effective_speed, 10.0 * delta)
+	velocity.z = move_toward(velocity.z, direction.z * effective_speed, 10.0 * delta)
 	if _visual != null:
 		_visual.rotation.y = lerp_angle(_visual.rotation.y, atan2(direction.x, direction.z), minf(1.0, delta * 8.0))
+
+func set_expedition_reserved(reserved: bool) -> void:
+	if _expedition_reserved == reserved:
+		return
+	_expedition_reserved = reserved
+	_target = null
+	velocity = Vector3.ZERO
+	visible = not reserved
+	set_physics_process(not reserved)
+	if reserved:
+		remove_from_group("camp_workers")
+		add_to_group("expedition_reserved_workers")
+	else:
+		remove_from_group("expedition_reserved_workers")
+		add_to_group("camp_workers")
+
+func is_expedition_reserved() -> bool:
+	return _expedition_reserved
 
 func _build_visual() -> void:
 	_visual = Node3D.new()
