@@ -11,6 +11,7 @@ on:
       - migration/godot-stage-6-progression-save
       - migration/godot-stage-7-units-wildlife
       - migration/godot-stage-8-fortifications
+      - migration/godot-stage-9-meta-progression
     paths:
       - 'godot/**'
       - '.github/workflows/godot-foundation.yml'
@@ -49,6 +50,8 @@ jobs:
         run: godot --headless --path godot --script res://tests/stage7_units_wildlife.gd
       - name: Stage 8 fortification tests
         run: godot --headless --path godot --script res://tests/stage8_fortifications.gd
+      - name: Stage 9 meta progression tests
+        run: godot --headless --path godot --script res://tests/stage9_meta_progression.gd
       - name: Boot main scene
         run: godot --headless --path godot --quit-after 8
       - name: Export Web build
