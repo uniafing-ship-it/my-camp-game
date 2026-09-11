@@ -1,4 +1,4 @@
-[gd_scene load_steps=23 format=3]
+[gd_scene load_steps=24 format=3]
 
 [ext_resource type="Script" path="res://scripts/world.gd" id="1_world"]
 [ext_resource type="PackedScene" path="res://scenes/player/Player.tscn" id="2_player"]
@@ -22,6 +22,7 @@
 [ext_resource type="Script" path="res://scripts/meta_progression_hud.gd" id="20_meta_hud"]
 [ext_resource type="Script" path="res://scripts/stage10_settlement_parity.gd" id="21_stage10"]
 [ext_resource type="Script" path="res://scripts/stage10_settlement_hud.gd" id="22_stage10_hud"]
+[ext_resource type="Script" path="res://scripts/stage10_settlement_world.gd" id="23_stage10_world"]
 
 [node name="Main" type="Node3D"]
 script = ExtResource("1_world")
@@ -60,6 +61,9 @@ script = ExtResource("15_support_world")
 
 [node name="FortificationsWorld" type="Node3D" parent="."]
 script = ExtResource("17_fortifications_world")
+
+[node name="Stage10SettlementWorld" type="Node3D" parent="."]
+script = ExtResource("23_stage10_world")
 
 [node name="WildlifeManager" type="Node3D" parent="."]
 script = ExtResource("14_wildlife")
