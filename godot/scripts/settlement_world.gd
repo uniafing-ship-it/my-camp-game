@@ -195,6 +195,7 @@ func _build_label(root: Node3D, building_id: String, level: int) -> void:
 
 func _spawn_worker(worker_id: int) -> void:
 	var worker = WorkerScript.new()
+	worker.process_thread_group = Node.PROCESS_THREAD_GROUP_MAIN_THREAD
 	worker.name = "Worker_%d" % worker_id
 	worker.worker_id = worker_id
 	worker.preferred_resource = _job_for_worker(worker_id)
