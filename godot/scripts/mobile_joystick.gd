@@ -6,9 +6,13 @@ extends Control
 var _touch_id := -1
 var _vector := Vector2.ZERO
 var _center := Vector2.ZERO
+var _touch_enabled := false
 
 func _ready() -> void:
 	add_to_group("mobile_joystick")
+	_touch_enabled = DisplayServer.is_touchscreen_available()
+	visible = _touch_enabled
+	mouse_filter = Control.MOUSE_FILTER_STOP if _touch_enabled else Control.MOUSE_FILTER_IGNORE
 	custom_minimum_size = Vector2(radius * 2.0, radius * 2.0)
 	_center = size * 0.5
 	queue_redraw()
@@ -19,9 +23,11 @@ func _notification(what: int) -> void:
 		queue_redraw()
 
 func get_vector() -> Vector2:
-	return _vector
+	return _vector if _touch_enabled else Vector2.ZERO
 
 func _gui_input(event: InputEvent) -> void:
+	if not _touch_enabled:
+		return
 	if event is InputEventScreenTouch:
 		if event.pressed and _touch_id == -1:
 			_touch_id = event.index
@@ -35,18 +41,6 @@ func _gui_input(event: InputEvent) -> void:
 	elif event is InputEventScreenDrag and event.index == _touch_id:
 		_update_vector(event.position)
 		accept_event()
-	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
-		if event.pressed:
-			_touch_id = -2
-			_update_vector(event.position)
-		else:
-			_touch_id = -1
-			_vector = Vector2.ZERO
-			queue_redraw()
-		accept_event()
-	elif event is InputEventMouseMotion and _touch_id == -2:
-		_update_vector(event.position)
-		accept_event()
 
 func _update_vector(local_position: Vector2) -> void:
 	var delta := local_position - _center
@@ -56,6 +50,8 @@ func _update_vector(local_position: Vector2) -> void:
 	queue_redraw()
 
 func _draw() -> void:
+	if not _touch_enabled:
+		return
 	draw_circle(_center, radius, Color(0.04, 0.07, 0.055, 0.42))
 	draw_arc(_center, radius, 0.0, TAU, 64, Color(0.86, 0.73, 0.39, 0.56), 2.0, true)
 	var knob_position := _center + _vector * radius
