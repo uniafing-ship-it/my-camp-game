@@ -65,14 +65,22 @@ func _physics_process(delta: float) -> void:
 	if _joystick and _joystick.has_method("get_vector"):
 		var mobile_vec: Vector2 = _joystick.get_vector()
 		if mobile_vec.length() > input_vec.length(): input_vec = mobile_vec
-	var camera := get_viewport().get_camera_3d()
-	var forward := Vector3.FORWARD
-	var right := Vector3.RIGHT
-	if camera:
-		forward = -camera.global_transform.basis.z; right = camera.global_transform.basis.x
-		forward.y = 0.0; right.y = 0.0; forward = forward.normalized(); right = right.normalized()
-	var desired_dir := right * input_vec.x + forward * -input_vec.y
+
+	var desired_dir := Vector3(input_vec.x, 0.0, input_vec.y)
+	if not legacy_camera_enabled:
+		var camera := get_viewport().get_camera_3d()
+		var forward := Vector3.FORWARD
+		var right := Vector3.RIGHT
+		if camera:
+			forward = -camera.global_transform.basis.z
+			right = camera.global_transform.basis.x
+			forward.y = 0.0
+			right.y = 0.0
+			forward = forward.normalized()
+			right = right.normalized()
+		desired_dir = right * input_vec.x + forward * -input_vec.y
 	if desired_dir.length_squared() > 1.0: desired_dir = desired_dir.normalized()
+
 	var target_speed := sprint_speed if Input.is_key_pressed(KEY_SHIFT) else move_speed
 	var target_velocity := desired_dir * target_speed
 	velocity.x = move_toward(velocity.x, target_velocity.x, acceleration * delta)
@@ -85,9 +93,11 @@ func _physics_process(delta: float) -> void:
 	_process_resource_gameplay()
 
 func request_attack() -> bool: return perform_attack()
+
 func perform_attack() -> bool:
 	if _dead or _attack_cd > 0.0: return false
-	_attack_cd = attack_cooldown; _attack_anim = 0.22
+	_attack_cd = attack_cooldown
+	_attack_anim = 0.22
 	var nearest: Node3D = null
 	var nearest_distance := INF
 	var wildlife_target := false
@@ -97,7 +107,9 @@ func perform_attack() -> bool:
 			if candidate.has_method("is_alive") and not bool(candidate.is_alive()): continue
 			var distance := global_position.distance_to(candidate.global_position)
 			if distance <= attack_range and distance < nearest_distance:
-				nearest = candidate; nearest_distance = distance; wildlife_target = group == "wildlife"
+				nearest = candidate
+				nearest_distance = distance
+				wildlife_target = group == "wildlife"
 	var hit := false
 	if nearest != null and nearest.has_method("take_damage"):
 		var damage := maxi(1, int(round(float(attack_damage) / 3.0))) if wildlife_target else attack_damage
@@ -107,76 +119,117 @@ func perform_attack() -> bool:
 				damage += maxi(0, int(meta.get_flat_damage_bonus()))
 			if meta.has_method("get_damage_multiplier"):
 				damage = maxi(1, int(round(float(damage) * float(meta.get_damage_multiplier()))))
-		nearest.take_damage(damage, global_position); hit = true
+		nearest.take_damage(damage, global_position)
+		hit = true
 	attacked.emit(hit)
 	return hit
 
 func take_damage(amount: int, source_position: Vector3 = Vector3.ZERO) -> int:
 	if _dead or amount <= 0 or _invulnerability > 0.0: return health
-	_invulnerability = invulnerability_time; health = maxi(0, health - amount)
+	_invulnerability = invulnerability_time
+	health = maxi(0, health - amount)
 	if source_position != Vector3.ZERO:
-		var away := global_position - source_position; away.y = 0.0
+		var away := global_position - source_position
+		away.y = 0.0
 		if away.length_squared() > 0.01:
-			away = away.normalized(); velocity.x += away.x * 3.5; velocity.z += away.z * 3.5
+			away = away.normalized()
+			velocity.x += away.x * 3.5
+			velocity.z += away.z * 3.5
 	health_changed.emit(health, max_health)
 	if health <= 0: _die()
 	return health
+
 func heal(amount: int) -> int:
 	if amount <= 0 or _dead: return health
-	health = mini(max_health, health + amount); health_changed.emit(health, max_health); return health
-func is_alive() -> bool: return not _dead and health > 0
-func export_state() -> Dictionary: return {"position":[global_position.x,global_position.y,global_position.z],"health":health,"yaw":_yaw,"pitch":_pitch}
+	health = mini(max_health, health + amount)
+	health_changed.emit(health, max_health)
+	return health
+
+func is_alive() -> bool:
+	return not _dead and health > 0
+
+func export_state() -> Dictionary:
+	return {"position":[global_position.x,global_position.y,global_position.z],"health":health,"yaw":_yaw,"pitch":_pitch}
+
 func import_state(data: Dictionary) -> void:
-	var saved_position=data.get("position",[])
-	if saved_position is Array and saved_position.size()>=3: global_position=Vector3(float(saved_position[0]),float(saved_position[1]),float(saved_position[2]))
-	_spawn_position=global_position
-	health=clampi(int(data.get("health",max_health)),1,max_health)
-	_dead=false
-	_invulnerability=0.5
+	var saved_position = data.get("position", [])
+	if saved_position is Array and saved_position.size() >= 3:
+		global_position = Vector3(float(saved_position[0]), float(saved_position[1]), float(saved_position[2]))
+	_spawn_position = global_position
+	health = clampi(int(data.get("health", max_health)), 1, max_health)
+	_dead = false
+	_invulnerability = 0.5
 	if legacy_camera_enabled:
 		_apply_legacy_camera_layout()
 	else:
-		_yaw=float(data.get("yaw",_yaw))
-		_pitch=clamp(float(data.get("pitch",_pitch)),deg_to_rad(-48.0),deg_to_rad(18.0))
-		camera_pivot.rotation=Vector3(_pitch,_yaw,0)
-	health_changed.emit(health,max_health)
+		_yaw = float(data.get("yaw", _yaw))
+		_pitch = clamp(float(data.get("pitch", _pitch)), deg_to_rad(-48.0), deg_to_rad(18.0))
+		camera_pivot.rotation = Vector3(_pitch, _yaw, 0)
+	health_changed.emit(health, max_health)
+
 func _die() -> void:
 	if _dead: return
-	_dead=true; velocity=Vector3.ZERO; died.emit(); await get_tree().create_timer(respawn_delay).timeout
+	_dead = true
+	velocity = Vector3.ZERO
+	died.emit()
+	await get_tree().create_timer(respawn_delay).timeout
 	if not is_inside_tree(): return
-	global_position=_spawn_position; health=max_health; _dead=false; _invulnerability=1.0; health_changed.emit(health,max_health); respawned.emit()
+	global_position = _spawn_position
+	health = max_health
+	_dead = false
+	_invulnerability = 1.0
+	health_changed.emit(health, max_health)
+	respawned.emit()
+
 func _update_attack_visual(delta: float) -> void:
-	if _sword_pivot==null: return
-	if _attack_anim>0.0:
-		_attack_anim=maxf(0.0,_attack_anim-delta); var t:=1.0-_attack_anim/0.22; _sword_pivot.rotation_degrees.z=-34.0+sin(t*PI)*88.0
-	else: _sword_pivot.rotation_degrees.z=-34.0
+	if _sword_pivot == null: return
+	if _attack_anim > 0.0:
+		_attack_anim = maxf(0.0, _attack_anim - delta)
+		var t := 1.0 - _attack_anim / 0.22
+		_sword_pivot.rotation_degrees.z = -34.0 + sin(t * PI) * 88.0
+	else:
+		_sword_pivot.rotation_degrees.z = -34.0
+
 func _process_resource_gameplay() -> void:
-	if _resource_manager==null: _resource_manager=get_tree().get_first_node_in_group("resource_manager")
-	if _resource_manager==null: return
+	if _resource_manager == null:
+		_resource_manager = get_tree().get_first_node_in_group("resource_manager")
+	if _resource_manager == null: return
 	for warehouse in get_tree().get_nodes_in_group("warehouse"):
-		if warehouse and warehouse.has_method("try_deposit"): warehouse.try_deposit(global_position,_resource_manager)
+		if warehouse and warehouse.has_method("try_deposit"):
+			warehouse.try_deposit(global_position, _resource_manager)
 	if not auto_harvest_enabled: return
-	if _resource_manager.has_method("get_free_capacity") and int(_resource_manager.get_free_capacity())<=0: return
-	var nearest: Node3D=null; var nearest_distance:=INF
+	if _resource_manager.has_method("get_free_capacity") and int(_resource_manager.get_free_capacity()) <= 0: return
+	var nearest: Node3D = null
+	var nearest_distance := INF
 	for candidate in get_tree().get_nodes_in_group("harvestables"):
 		if not (candidate is Node3D): continue
 		if candidate.has_method("is_depleted") and candidate.is_depleted(): continue
-		var distance:=global_position.distance_to(candidate.global_position); var radius:=float(candidate.get("harvest_radius"))
-		if distance<=radius and distance<nearest_distance: nearest=candidate; nearest_distance=distance
-	if nearest and nearest.has_method("try_harvest"): nearest.try_harvest(_resource_manager)
+		var distance := global_position.distance_to(candidate.global_position)
+		var radius := float(candidate.get("harvest_radius"))
+		if distance <= radius and distance < nearest_distance:
+			nearest = candidate
+			nearest_distance = distance
+	if nearest and nearest.has_method("try_harvest"):
+		nearest.try_harvest(_resource_manager)
+
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
-		if event.keycode==KEY_SPACE or event.keycode==KEY_F: request_attack()
+		if event.keycode == KEY_SPACE or event.keycode == KEY_F:
+			request_attack()
 		return
 	if legacy_camera_enabled:
 		return
 	if event is InputEventScreenDrag:
-		if event.position.x < get_viewport().get_visible_rect().size.x*0.35: return
+		if event.position.x < get_viewport().get_visible_rect().size.x * 0.35: return
 		_apply_look(event.relative)
-	elif event is InputEventMouseMotion and Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT): _apply_look(event.relative)
+	elif event is InputEventMouseMotion and Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT):
+		_apply_look(event.relative)
+
 func _apply_look(relative: Vector2) -> void:
 	if legacy_camera_enabled: return
-	_yaw-=relative.x*look_sensitivity; _pitch=clamp(_pitch-relative.y*look_sensitivity,deg_to_rad(-48.0),deg_to_rad(18.0)); camera_pivot.rotation=Vector3(_pitch,_yaw,0.0)
+	_yaw -= relative.x * look_sensitivity
+	_pitch = clamp(_pitch - relative.y * look_sensitivity, deg_to_rad(-48.0), deg_to_rad(18.0))
+	camera_pivot.rotation = Vector3(_pitch, _yaw, 0.0)
 
 func _apply_legacy_camera_layout() -> void:
 	if not legacy_camera_enabled or camera_pivot == null or spring_arm == null or player_camera == null:
@@ -184,19 +237,16 @@ func _apply_legacy_camera_layout() -> void:
 	var viewport_size := get_viewport_rect().size
 	var portrait := viewport_size.y > viewport_size.x
 	if portrait:
-		# Matches the legacy WebGL portrait camera: eye [0,17.5,18.5], target [0,0.35,-1.8], FOV 0.80 rad.
 		camera_pivot.position = Vector3(0.0, 0.35, -1.8)
 		_pitch = deg_to_rad(-40.192046)
 		_yaw = 0.0
 		spring_arm.spring_length = 26.574659
 		player_camera.fov = 45.836624
 	else:
-		# Matches the legacy WebGL landscape camera: eye [0,15.2,20.5], target [0,0.35,-2.4], FOV 0.72 rad.
 		camera_pivot.position = Vector3(0.0, 0.35, -2.4)
 		_pitch = deg_to_rad(-32.962264)
 		_yaw = 0.0
 		spring_arm.spring_length = 27.293452
 		player_camera.fov = 41.252961
 	camera_pivot.rotation = Vector3(_pitch, _yaw, 0.0)
-	# The old camera never zoomed into an over-the-shoulder view when a building was behind the hero.
 	spring_arm.collision_mask = 0
