@@ -23,8 +23,15 @@ func get_total_carried() -> int:
 		total += int(carried.get(resource_type, 0))
 	return total
 
+func get_effective_carry_capacity() -> int:
+	var total := carry_capacity
+	var meta = get_tree().get_first_node_in_group("meta_progression_manager")
+	if meta != null and meta.has_method("get_carry_bonus"):
+		total += maxi(0, int(meta.get_carry_bonus()))
+	return maxi(1, total)
+
 func get_free_capacity() -> int:
-	return maxi(0, carry_capacity - get_total_carried())
+	return maxi(0, get_effective_carry_capacity() - get_total_carried())
 
 func add_carried(resource_type: String, amount: int) -> int:
 	if amount <= 0 or not carried.has(resource_type): return 0
