@@ -10,10 +10,12 @@ const BASE_CARRY_CAPACITY := 30
 const RESEARCH := {
 	"axes": {"name":"ЗАТОЧЕННЫЕ ТОПОРЫ", "description":"+1 ко всей добыче", "cost":{"gold":30,"wood":100}},
 	"bags": {"name":"КРЕПКИЕ МЕШКИ", "description":"+6 к рюкзаку", "cost":{"gold":25,"wood":80}},
-	"armor": {"name":"КОЛЬЧУГИ", "description":"+3 HP бойцам", "cost":{"gold":40,"pelts":5}},
+	"armor": {"name":"КЛЁПАНАЯ БРОНЯ", "description":"+3 здоровья бойцам", "cost":{"gold":40,"stone":120}},
+	"arrows": {"name":"ЭЛЬФИЙСКИЕ СТРЕЛЫ", "description":"+1 к базовому урону башен", "cost":{"gold":60,"stone":150}},
+	"walls": {"name":"КАМЕННАЯ КЛАДКА", "description":"стены замедляют врагов сильнее", "cost":{"gold":50,"stone":200}},
 	"hounds": {"name":"БОЕВЫЕ ПСЫ", "description":"псы +2 урона, найм дешевле по шкурам", "cost":{"gold":45,"pelts":5}},
 }
-const RESEARCH_ORDER := ["axes", "bags", "armor", "hounds"]
+const RESEARCH_ORDER := ["axes", "bags", "armor", "arrows", "walls", "hounds"]
 const QUESTS := [
 	{"id":"wood30", "title":"Сдай на склад 30 🌲", "type":"gathered", "key":"wood", "target":30, "reward":{"food":10}},
 	{"id":"lumber", "title":"Построй ЛЕСОПИЛКУ", "type":"building", "key":"lumber_camp", "target":1, "reward":{"wood":30}},
@@ -158,6 +160,12 @@ func get_carry_bonus() -> int:
 
 func get_unit_hp_bonus() -> int:
 	return 3 if researched.has("armor") else 0
+
+func get_tower_damage_bonus() -> int:
+	return 1 if researched.has("arrows") else 0
+
+func get_wall_slow_bonus() -> float:
+	return 0.1 if researched.has("walls") else 0.0
 
 func get_dog_damage_bonus() -> int:
 	return 2 if researched.has("hounds") else 0
