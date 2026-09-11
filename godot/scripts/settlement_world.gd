@@ -194,9 +194,13 @@ func _build_label(root: Node3D, building_id: String, level: int) -> void:
 	root.add_child(label)
 
 func _spawn_worker(worker_id: int) -> void:
+	var worker_name := "Worker_%d" % worker_id
+	var existing = get_node_or_null(worker_name)
+	if existing != null and is_instance_valid(existing):
+		return
 	var worker = WorkerScript.new()
 	worker.process_thread_group = Node.PROCESS_THREAD_GROUP_MAIN_THREAD
-	worker.name = "Worker_%d" % worker_id
+	worker.name = worker_name
 	worker.worker_id = worker_id
 	worker.preferred_resource = _job_for_worker(worker_id)
 	var angle := TAU * float(_worker_spawn_index % 8) / 8.0
