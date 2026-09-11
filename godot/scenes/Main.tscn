@@ -1,4 +1,4 @@
-[gd_scene load_steps=24 format=3]
+[gd_scene load_steps=19 format=3]
 
 [ext_resource type="Script" path="res://scripts/world.gd" id="1_world"]
 [ext_resource type="PackedScene" path="res://scenes/player/Player.tscn" id="2_player"]
@@ -8,21 +8,16 @@
 [ext_resource type="Script" path="res://scripts/settlement_manager.gd" id="6_settlement_manager"]
 [ext_resource type="Script" path="res://scripts/settlement_world.gd" id="7_settlement_world"]
 [ext_resource type="Script" path="res://scripts/wave_manager.gd" id="8_wave_manager"]
-[ext_resource type="Script" path="res://scripts/mobile_game_hud.gd" id="9_mobile_hud"]
-[ext_resource type="Script" path="res://scripts/progression_manager.gd" id="10_progression"]
-[ext_resource type="Script" path="res://scripts/save_manager.gd" id="11_save"]
-[ext_resource type="Script" path="res://scripts/progression_hud.gd" id="12_progression_hud"]
-[ext_resource type="Script" path="res://scripts/unit_manager.gd" id="13_units"]
-[ext_resource type="Script" path="res://scripts/wildlife_manager.gd" id="14_wildlife"]
-[ext_resource type="Script" path="res://scripts/support_buildings_world.gd" id="15_support_world"]
-[ext_resource type="Script" path="res://scripts/unit_hud.gd" id="16_unit_hud"]
-[ext_resource type="Script" path="res://scripts/fortifications_world.gd" id="17_fortifications_world"]
-[ext_resource type="Script" path="res://scripts/fortifications_hud.gd" id="18_fortifications_hud"]
-[ext_resource type="Script" path="res://scripts/meta_progression_manager.gd" id="19_meta_progression"]
-[ext_resource type="Script" path="res://scripts/meta_progression_hud.gd" id="20_meta_hud"]
-[ext_resource type="Script" path="res://scripts/stage10_settlement_parity.gd" id="21_stage10"]
-[ext_resource type="Script" path="res://scripts/stage10_settlement_hud.gd" id="22_stage10_hud"]
-[ext_resource type="Script" path="res://scripts/stage10_settlement_world.gd" id="23_stage10_world"]
+[ext_resource type="Script" path="res://scripts/progression_manager.gd" id="9_progression"]
+[ext_resource type="Script" path="res://scripts/save_manager.gd" id="10_save"]
+[ext_resource type="Script" path="res://scripts/unit_manager.gd" id="11_units"]
+[ext_resource type="Script" path="res://scripts/wildlife_manager.gd" id="12_wildlife"]
+[ext_resource type="Script" path="res://scripts/support_buildings_world.gd" id="13_support_world"]
+[ext_resource type="Script" path="res://scripts/fortifications_world.gd" id="14_fortifications_world"]
+[ext_resource type="Script" path="res://scripts/meta_progression_manager.gd" id="15_meta_progression"]
+[ext_resource type="Script" path="res://scripts/stage10_settlement_parity.gd" id="16_stage10"]
+[ext_resource type="Script" path="res://scripts/stage10_settlement_world.gd" id="17_stage10_world"]
+[ext_resource type="Script" path="res://scripts/unified_game_hud.gd" id="18_unified_hud"]
 
 [node name="Main" type="Node3D"]
 script = ExtResource("1_world")
@@ -35,19 +30,19 @@ carry_capacity = 30
 script = ExtResource("6_settlement_manager")
 
 [node name="ProgressionManager" type="Node" parent="."]
-script = ExtResource("10_progression")
+script = ExtResource("9_progression")
 
 [node name="MetaProgressionManager" type="Node" parent="."]
-script = ExtResource("19_meta_progression")
+script = ExtResource("15_meta_progression")
 
 [node name="Stage10SettlementParity" type="Node" parent="."]
-script = ExtResource("21_stage10")
+script = ExtResource("16_stage10")
 
 [node name="UnitManager" type="Node3D" parent="."]
-script = ExtResource("13_units")
+script = ExtResource("11_units")
 
 [node name="SaveManager" type="Node" parent="."]
-script = ExtResource("11_save")
+script = ExtResource("10_save")
 autosave_interval = 10.0
 
 [node name="ResourceGameplay" type="Node3D" parent="."]
@@ -57,16 +52,16 @@ script = ExtResource("5_resource_world")
 script = ExtResource("7_settlement_world")
 
 [node name="SupportBuildingsWorld" type="Node3D" parent="."]
-script = ExtResource("15_support_world")
+script = ExtResource("13_support_world")
 
 [node name="FortificationsWorld" type="Node3D" parent="."]
-script = ExtResource("17_fortifications_world")
+script = ExtResource("14_fortifications_world")
 
 [node name="Stage10SettlementWorld" type="Node3D" parent="."]
-script = ExtResource("23_stage10_world")
+script = ExtResource("17_stage10_world")
 
 [node name="WildlifeManager" type="Node3D" parent="."]
-script = ExtResource("14_wildlife")
+script = ExtResource("12_wildlife")
 respawn_interval = 7.5
 world_radius = 27.0
 
@@ -84,7 +79,7 @@ position = Vector3(0, 0, 7)
 
 [node name="UI" type="CanvasLayer" parent="."]
 
-[node name="MobileGameHUD" type="Control" parent="UI"]
+[node name="UnifiedGameHUD" type="Control" parent="UI"]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -92,57 +87,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-script = ExtResource("9_mobile_hud")
-
-[node name="ProgressionHUD" type="Control" parent="UI"]
-layout_mode = 3
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-script = ExtResource("12_progression_hud")
-
-[node name="UnitHUD" type="Control" parent="UI"]
-layout_mode = 3
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-script = ExtResource("16_unit_hud")
-
-[node name="FortificationsHUD" type="Control" parent="UI"]
-layout_mode = 3
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-script = ExtResource("18_fortifications_hud")
-
-[node name="MetaProgressionHUD" type="Control" parent="UI"]
-layout_mode = 3
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-script = ExtResource("20_meta_hud")
-
-[node name="Stage10SettlementHUD" type="Control" parent="UI"]
-layout_mode = 3
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-script = ExtResource("22_stage10_hud")
+script = ExtResource("18_unified_hud")
 
 [node name="MobileJoystick" type="Control" parent="UI"]
 offset_left = 24.0
