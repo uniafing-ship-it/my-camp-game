@@ -183,7 +183,12 @@ func _process_production(delta:float)->void:
 		for resource in prod.keys():
 			var interval:=maxf(0.25,float(prod[resource])*pow(0.94,lvl-1)); production_timers[id]=float(production_timers.get(id,0.0))+delta
 			while float(production_timers[id])>=interval:
-				production_timers[id]=float(production_timers[id])-interval; var amount:=lvl; var meta=get_tree().get_first_node_in_group("meta_progression_manager"); if meta!=null and meta.has_method("get_production_multiplier"): amount=maxi(1,int(round(float(amount)*float(meta.get_production_multiplier())))); _resource_manager.add_stored(str(resource),amount)
+				production_timers[id] = float(production_timers[id]) - interval
+				var amount := lvl
+				var meta = get_tree().get_first_node_in_group("meta_progression_manager")
+				if meta != null and meta.has_method("get_production_multiplier"):
+					amount = maxi(1, int(round(float(amount) * float(meta.get_production_multiplier()))))
+				_resource_manager.add_stored(str(resource), amount)
 func _on_wave_ended(number:int)->void:
 	if number<=0 or not active_encounter_id.is_empty(): return
 	if not _loaded_once and resolved_encounters.is_empty() and number>1:
