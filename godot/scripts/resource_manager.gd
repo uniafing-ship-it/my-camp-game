@@ -28,6 +28,9 @@ func get_effective_carry_capacity() -> int:
 	var meta = get_tree().get_first_node_in_group("meta_progression_manager")
 	if meta != null and meta.has_method("get_carry_bonus"):
 		total += maxi(0, int(meta.get_carry_bonus()))
+	var parity = get_tree().get_first_node_in_group("stage10_settlement_parity")
+	if parity != null and parity.has_method("get_hero_carry_bonus"):
+		total += maxi(0, int(parity.get_hero_carry_bonus()))
 	return maxi(1, total)
 
 func get_free_capacity() -> int:
