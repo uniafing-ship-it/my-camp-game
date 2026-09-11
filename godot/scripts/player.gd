@@ -11,6 +11,7 @@ signal attacked(hit: bool)
 @export var gravity_force: float = 24.0
 @export var look_sensitivity: float = 0.004
 @export var auto_harvest_enabled: bool = true
+@export var legacy_camera_enabled: bool = true
 @export var max_health: int = 100
 @export var attack_damage: int = 24
 @export var attack_range: float = 2.35
@@ -20,11 +21,13 @@ signal attacked(hit: bool)
 
 @onready var visual: Node3D = $Visual
 @onready var camera_pivot: Node3D = $CameraPivot
+@onready var spring_arm: SpringArm3D = $CameraPivot/SpringArm3D
+@onready var player_camera: Camera3D = $CameraPivot/SpringArm3D/Camera3D
 
 var health: int = 0
 var _joystick: Node = null
 var _resource_manager = null
-var _pitch := deg_to_rad(-17.0)
+var _pitch := deg_to_rad(-32.962264)
 var _yaw := 0.0
 var _attack_cd := 0.0
 var _invulnerability := 0.0
@@ -37,10 +40,13 @@ func _ready() -> void:
 	add_to_group("player_combat")
 	_joystick = get_tree().get_first_node_in_group("mobile_joystick")
 	_resource_manager = get_tree().get_first_node_in_group("resource_manager")
-	_yaw = rotation.y
+	_yaw = 0.0 if legacy_camera_enabled else rotation.y
 	health = max_health
 	_spawn_position = global_position
 	_sword_pivot = get_node_or_null("Visual/SwordPivot")
+	if legacy_camera_enabled:
+		get_viewport().size_changed.connect(_apply_legacy_camera_layout)
+		call_deferred("_apply_legacy_camera_layout")
 	health_changed.emit(health, max_health)
 
 func _physics_process(delta: float) -> void:
@@ -123,7 +129,17 @@ func export_state() -> Dictionary: return {"position":[global_position.x,global_
 func import_state(data: Dictionary) -> void:
 	var saved_position=data.get("position",[])
 	if saved_position is Array and saved_position.size()>=3: global_position=Vector3(float(saved_position[0]),float(saved_position[1]),float(saved_position[2]))
-	_spawn_position=global_position; health=clampi(int(data.get("health",max_health)),1,max_health); _yaw=float(data.get("yaw",_yaw)); _pitch=clamp(float(data.get("pitch",_pitch)),deg_to_rad(-48.0),deg_to_rad(18.0)); _dead=false; _invulnerability=0.5; camera_pivot.rotation=Vector3(_pitch,_yaw,0); health_changed.emit(health,max_health)
+	_spawn_position=global_position
+	health=clampi(int(data.get("health",max_health)),1,max_health)
+	_dead=false
+	_invulnerability=0.5
+	if legacy_camera_enabled:
+		_apply_legacy_camera_layout()
+	else:
+		_yaw=float(data.get("yaw",_yaw))
+		_pitch=clamp(float(data.get("pitch",_pitch)),deg_to_rad(-48.0),deg_to_rad(18.0))
+		camera_pivot.rotation=Vector3(_pitch,_yaw,0)
+	health_changed.emit(health,max_health)
 func _die() -> void:
 	if _dead: return
 	_dead=true; velocity=Vector3.ZERO; died.emit(); await get_tree().create_timer(respawn_delay).timeout
@@ -151,9 +167,36 @@ func _process_resource_gameplay() -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
 		if event.keycode==KEY_SPACE or event.keycode==KEY_F: request_attack()
-	elif event is InputEventScreenDrag:
+		return
+	if legacy_camera_enabled:
+		return
+	if event is InputEventScreenDrag:
 		if event.position.x < get_viewport().get_visible_rect().size.x*0.35: return
 		_apply_look(event.relative)
 	elif event is InputEventMouseMotion and Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT): _apply_look(event.relative)
 func _apply_look(relative: Vector2) -> void:
+	if legacy_camera_enabled: return
 	_yaw-=relative.x*look_sensitivity; _pitch=clamp(_pitch-relative.y*look_sensitivity,deg_to_rad(-48.0),deg_to_rad(18.0)); camera_pivot.rotation=Vector3(_pitch,_yaw,0.0)
+
+func _apply_legacy_camera_layout() -> void:
+	if not legacy_camera_enabled or camera_pivot == null or spring_arm == null or player_camera == null:
+		return
+	var viewport_size := get_viewport_rect().size
+	var portrait := viewport_size.y > viewport_size.x
+	if portrait:
+		# Matches the legacy WebGL portrait camera: eye [0,17.5,18.5], target [0,0.35,-1.8], FOV 0.80 rad.
+		camera_pivot.position = Vector3(0.0, 0.35, -1.8)
+		_pitch = deg_to_rad(-40.192046)
+		_yaw = 0.0
+		spring_arm.spring_length = 26.574659
+		player_camera.fov = 45.836624
+	else:
+		# Matches the legacy WebGL landscape camera: eye [0,15.2,20.5], target [0,0.35,-2.4], FOV 0.72 rad.
+		camera_pivot.position = Vector3(0.0, 0.35, -2.4)
+		_pitch = deg_to_rad(-32.962264)
+		_yaw = 0.0
+		spring_arm.spring_length = 27.293452
+		player_camera.fov = 41.252961
+	camera_pivot.rotation = Vector3(_pitch, _yaw, 0.0)
+	# The old camera never zoomed into an over-the-shoulder view when a building was behind the hero.
+	spring_arm.collision_mask = 0
