@@ -32,7 +32,7 @@ func try_harvest(manager) -> int:
 	if now < _next_harvest_msec:
 		return 0
 	_next_harvest_msec = now + int(harvest_interval * 1000.0)
-	var requested := yield_amount + _harvest_bonus()
+	var requested := _apply_meta_production(yield_amount + _harvest_bonus())
 	if not infinite_source:
 		requested = mini(requested, current_amount)
 	var accepted: int = int(manager.add_carried(resource_type, requested))
@@ -47,7 +47,7 @@ func try_harvest(manager) -> int:
 func take_for_worker(requested: int) -> int:
 	if requested <= 0 or _depleted:
 		return 0
-	var accepted := requested + _harvest_bonus()
+	var accepted := _apply_meta_production(requested + _harvest_bonus())
 	if not infinite_source:
 		accepted = mini(accepted, current_amount)
 	if accepted <= 0:
@@ -57,10 +57,20 @@ func take_for_worker(requested: int) -> int:
 	return accepted
 
 func _harvest_bonus() -> int:
+	var bonus := 0
 	var progression = get_tree().get_first_node_in_group("progression_manager")
 	if progression != null and progression.has_method("get_harvest_bonus"):
-		return maxi(0, int(progression.get_harvest_bonus(resource_type)))
-	return 0
+		bonus += maxi(0, int(progression.get_harvest_bonus(resource_type)))
+	var meta = get_tree().get_first_node_in_group("meta_progression_manager")
+	if meta != null and meta.has_method("get_harvest_bonus"):
+		bonus += maxi(0, int(meta.get_harvest_bonus()))
+	return bonus
+
+func _apply_meta_production(amount: int) -> int:
+	var meta = get_tree().get_first_node_in_group("meta_progression_manager")
+	if meta != null and meta.has_method("apply_production_amount"):
+		return maxi(1, int(meta.apply_production_amount(amount)))
+	return maxi(1, amount)
 
 func _consume(amount: int) -> void:
 	if infinite_source:
