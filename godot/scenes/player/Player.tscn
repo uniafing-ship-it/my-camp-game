@@ -84,16 +84,16 @@ material_override = SubResource("HandleMaterial")
 cast_shadow = 1
 
 [node name="CameraPivot" type="Node3D" parent="."]
-position = Vector3(0, 1.45, 0)
-rotation_degrees = Vector3(-17, 0, 0)
+position = Vector3(0, 0.35, -2.4)
+rotation_degrees = Vector3(-32.962264, 0, 0)
 
 [node name="SpringArm3D" type="SpringArm3D" parent="CameraPivot"]
-spring_length = 5.2
+spring_length = 27.293452
 margin = 0.22
-collision_mask = 1
+collision_mask = 0
 
 [node name="Camera3D" type="Camera3D" parent="CameraPivot/SpringArm3D"]
 current = true
-fov = 62.0
+fov = 41.252961
 near = 0.08
 far = 180.0
