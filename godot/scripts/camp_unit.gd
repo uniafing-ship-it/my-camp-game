@@ -18,6 +18,7 @@ var _scan_left := 0.0
 var _dead := false
 var _visual: Node3D
 var _home := Vector3.ZERO
+var _expedition_reserved := false
 
 func _ready() -> void:
 	add_to_group("camp_defenders")
@@ -26,7 +27,7 @@ func _ready() -> void:
 	_build_visual()
 
 func _physics_process(delta: float) -> void:
-	if _dead:
+	if _dead or _expedition_reserved:
 		return
 	_attack_left = maxf(0.0, _attack_left - delta)
 	_scan_left -= delta
@@ -88,7 +89,7 @@ func _try_attack() -> void:
 		_target.take_damage(attack_damage, global_position)
 
 func take_damage(amount: int, _source_position: Vector3 = Vector3.ZERO) -> int:
-	if _dead or amount <= 0:
+	if _dead or _expedition_reserved or amount <= 0:
 		return health
 	health = maxi(0, health - amount)
 	if health <= 0:
@@ -98,7 +99,25 @@ func take_damage(amount: int, _source_position: Vector3 = Vector3.ZERO) -> int:
 	return health
 
 func is_alive() -> bool:
-	return not _dead and health > 0
+	return not _dead and not _expedition_reserved and health > 0
+
+func set_expedition_reserved(reserved: bool) -> void:
+	if _dead or _expedition_reserved == reserved:
+		return
+	_expedition_reserved = reserved
+	_target = null
+	velocity = Vector3.ZERO
+	visible = not reserved
+	set_physics_process(not reserved)
+	if reserved:
+		remove_from_group("camp_defenders")
+		add_to_group("expedition_reserved_units")
+	else:
+		remove_from_group("expedition_reserved_units")
+		add_to_group("camp_defenders")
+
+func is_expedition_reserved() -> bool:
+	return _expedition_reserved
 
 func _build_visual() -> void:
 	var collision := CollisionShape3D.new()
