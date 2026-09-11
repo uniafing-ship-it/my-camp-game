@@ -2,9 +2,18 @@ extends SceneTree
 
 const EnemyScript = preload("res://scripts/enemy.gd")
 var failures := 0
+var _finished := false
 
 func _init() -> void:
+	var watchdog := create_timer(45.0)
+	watchdog.timeout.connect(_on_watchdog)
 	call_deferred("_run")
+
+func _on_watchdog() -> void:
+	if _finished:
+		return
+	push_error("Stage 8 fortification tests timed out")
+	quit(1)
 
 func _expect(condition: bool, message: String) -> void:
 	if condition:
@@ -13,11 +22,15 @@ func _expect(condition: bool, message: String) -> void:
 		failures += 1
 		push_error("FAIL: " + message)
 
+func _finish(code: int) -> void:
+	_finished = true
+	quit(code)
+
 func _run() -> void:
 	var packed := load("res://scenes/Main.tscn") as PackedScene
 	_expect(packed != null, "main scene loads")
 	if packed == null:
-		quit(1)
+		_finish(1)
 		return
 	var main := packed.instantiate()
 	root.add_child(main)
@@ -41,9 +54,11 @@ func _run() -> void:
 	_expect(defenses != null, "fortifications world present")
 	_expect(defense_hud != null, "fortifications mobile drawer present")
 	if resources == null or settlement == null or progression == null or units == null or defenses == null:
-		quit(1)
+		_finish(1)
 		return
 
+	# Keep the integration test deterministic: combat fire is exercised explicitly below.
+	defenses.set_process(false)
 	if saver != null:
 		saver.delete_save()
 	if wave != null:
@@ -90,11 +105,11 @@ func _run() -> void:
 	await process_frame
 	var foot = null
 	for defender in get_nodes_in_group("camp_defenders"):
-		if str(defender.unit_kind) == "foot":
+		if defender != null and is_instance_valid(defender) and str(defender.unit_kind) == "foot":
 			foot = defender
 			break
 	_expect(foot != null, "3D warrior actor exists")
-	if foot != null:
+	if foot != null and is_instance_valid(foot):
 		_expect(int(foot.max_health) == 53, "infirmary and armor add five HP to warrior")
 		_expect(int(foot.attack_damage) > 12, "training ground increases warrior damage")
 		_expect(float(foot.attack_interval) < 0.82, "training ground increases warrior attack tempo")
@@ -104,11 +119,14 @@ func _run() -> void:
 	enemy.position = Vector3(0,0,-11.5)
 	main.add_child(enemy)
 	await process_frame
-	_expect(absf(float(enemy.get_fortification_speed_multiplier()) - 0.50) < 0.001, "raider inside wall radius receives legacy level-1 wall slowdown plus masonry")
-	var before_hp := int(enemy.health)
-	var fired := int(defenses.fire_defenses_once_for_test())
-	_expect(fired >= 1, "automated fortifications acquire a nearby raider")
-	_expect(int(enemy.health) < before_hp, "automated fortifications damage raider")
+	enemy.set_physics_process(false)
+	_expect(is_instance_valid(enemy), "test raider remains available for deterministic defense check")
+	if is_instance_valid(enemy):
+		_expect(absf(float(enemy.get_fortification_speed_multiplier()) - 0.50) < 0.001, "raider inside wall radius receives legacy level-1 wall slowdown plus masonry")
+		var before_hp := int(enemy.health)
+		var fired := int(defenses.fire_defenses_once_for_test())
+		_expect(fired >= 1, "automated fortifications acquire a nearby raider")
+		_expect(is_instance_valid(enemy) and int(enemy.health) < before_hp, "automated fortifications damage raider")
 
 	if saver != null:
 		await process_frame
@@ -129,7 +147,7 @@ func _run() -> void:
 
 	if failures == 0:
 		print("STAGE8_FORTIFICATION_TESTS_OK")
-		quit(0)
+		_finish(0)
 	else:
 		push_error("Stage 8 fortification tests failed: %d" % failures)
-		quit(1)
+		_finish(1)
