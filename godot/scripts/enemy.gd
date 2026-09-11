@@ -121,8 +121,12 @@ func _die() -> void:
 		return
 	_dead = true
 	var resources = get_tree().get_first_node_in_group("resource_manager")
-	if resources != null and reward_gold > 0:
-		resources.add_stored("gold", reward_gold)
+	var reward := reward_gold
+	var meta = get_tree().get_first_node_in_group("meta_progression_manager")
+	if meta != null and meta.has_method("get_gold_kill_multiplier"):
+		reward *= maxi(1, int(meta.get_gold_kill_multiplier()))
+	if resources != null and reward > 0:
+		resources.add_stored("gold", reward)
 	died.emit(self)
 	queue_free()
 
