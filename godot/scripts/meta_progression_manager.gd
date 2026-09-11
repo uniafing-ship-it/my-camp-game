@@ -298,15 +298,15 @@ func _roll_expedition_reward(expedition_id: String) -> Dictionary:
 	match expedition_id:
 		"scout":
 			reward["gold"] = _rng.randi_range(20, 45) + wave_number * 2
-			var resource := ["wood", "stone", "food"][_rng.randi_range(0, 2)]
+			var resource: String = str(["wood", "stone", "food"][_rng.randi_range(0, 2)])
 			reward[resource] = int(reward.get(resource, 0)) + _rng.randi_range(40, 80)
 		"supplies":
 			for _i in range(2):
-				var resource := ["wood", "stone", "gold"][_rng.randi_range(0, 2)]
+				var resource: String = str(["wood", "stone", "gold"][_rng.randi_range(0, 2)])
 				reward[resource] = int(reward.get(resource, 0)) + _rng.randi_range(60, 130)
 		"ruins":
 			reward["gold"] = _rng.randi_range(60, 120) + wave_number * 3
-			var resource := ["wood", "stone", "food", "gold"][_rng.randi_range(0, 3)]
+			var resource: String = str(["wood", "stone", "food", "gold"][_rng.randi_range(0, 3)])
 			reward[resource] = int(reward.get(resource, 0)) + _rng.randi_range(80, 160)
 			if _rng.randf() < 0.25:
 				var relic_id := grant_relic()
