@@ -1,0 +1,58 @@
+name: Publish Godot Stage 10 Web Preview
+
+on:
+  push:
+    branches:
+      - deploy/godot-stage10-web
+    paths:
+      - 'godot/**'
+      - '.github/workflows/godot-vercel-preview.yml'
+      - 'vercel.json'
+
+permissions:
+  contents: write
+
+jobs:
+  publish-web-preview:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Godot 4.3
+        uses: chickensoft-games/setup-godot@v2
+        with:
+          version: 4.3.0
+          use-dotnet: false
+          include-templates: true
+
+      - name: Import project
+        run: godot --headless --path godot --editor --quit
+
+      - name: Export Godot Web build
+        run: |
+          rm -rf godot/build/web
+          mkdir -p godot/build/web
+          godot --headless --path godot --export-release "Web" build/web/index.html
+          test -f godot/build/web/index.html
+          test -f godot/build/web/index.wasm
+          test -f godot/build/web/index.pck
+
+      - name: Publish Web export at branch root
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp godot/build/web/index.html ./index.html
+          find godot/build/web -maxdepth 1 -type f -name 'index.*' ! -name 'index.html' -exec cp '{}' ./ \;
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html index.*
+          if git diff --cached --quiet; then
+            echo "Godot Web export is already current."
+            exit 0
+          fi
+          git commit -m "chore: publish Godot Stage 10 web [skip ci]"
+          git push origin HEAD:deploy/godot-stage10-web
