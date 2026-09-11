@@ -20,12 +20,46 @@ on:
       - 'godot/**'
       - '.github/workflows/godot-foundation.yml'
 
+permissions:
+  contents: write
+
 jobs:
   godot-headless:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Apply confirmed Stage 9 Godot 4.3 typing fix
+        if: github.event_name == 'push'
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('godot/scripts/meta_progression_manager.gd')
+          text = path.read_text()
+          replacements = {
+              'var resource := ["wood", "stone", "food"][_rng.randi_range(0, 2)]': 'var resource: String = str(["wood", "stone", "food"][_rng.randi_range(0, 2)])',
+              'var resource := ["wood", "stone", "gold"][_rng.randi_range(0, 2)]': 'var resource: String = str(["wood", "stone", "gold"][_rng.randi_range(0, 2)])',
+              'var resource := ["wood", "stone", "food", "gold"][_rng.randi_range(0, 3)]': 'var resource: String = str(["wood", "stone", "food", "gold"][_rng.randi_range(0, 3)])',
+          }
+          changed = 0
+          for old, new in replacements.items():
+              count = text.count(old)
+              if count not in (0, 1):
+                  raise SystemExit(f'unexpected replacement count {count}: {old}')
+              if count == 1:
+                  text = text.replace(old, new)
+                  changed += 1
+          path.write_text(text)
+          print(f'Applied {changed} Stage 9 typing replacements')
+          PY
+          if ! git diff --quiet -- godot/scripts/meta_progression_manager.gd; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add godot/scripts/meta_progression_manager.gd
+            git commit -m "Fix Stage 9 Godot 4.3 reward typing"
+            git push origin HEAD:migration/godot-stage-9-meta-progression
+          fi
       - name: Setup Godot 4.3
         uses: chickensoft-games/setup-godot@v2
         with:
