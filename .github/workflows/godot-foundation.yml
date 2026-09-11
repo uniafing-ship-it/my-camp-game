@@ -11,6 +11,7 @@ on:
       - migration/godot-stage-6-progression-save
       - migration/godot-stage-7-units-wildlife
       - migration/godot-stage-8-fortifications
+      - migration/godot-stage-9-meta-progression
     paths:
       - 'godot/**'
       - '.github/workflows/godot-foundation.yml'
@@ -49,6 +50,19 @@ jobs:
         run: godot --headless --path godot --script res://tests/stage7_units_wildlife.gd
       - name: Stage 8 fortification tests
         run: godot --headless --path godot --script res://tests/stage8_fortifications.gd
+      - name: Stage 9 meta progression tests
+        shell: bash
+        run: |
+          set -o pipefail
+          godot --headless --path godot --script res://tests/stage9_meta_progression.gd 2>&1 | tee stage9-test.log
+      - name: Upload Stage 9 diagnostic log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stage9-test-log
+          path: stage9-test.log
+          if-no-files-found: error
+          retention-days: 7
       - name: Boot main scene
         run: godot --headless --path godot --quit-after 8
       - name: Export Web build

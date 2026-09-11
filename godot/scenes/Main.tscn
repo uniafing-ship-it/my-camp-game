@@ -1,4 +1,4 @@
-[gd_scene load_steps=19 format=3]
+[gd_scene load_steps=21 format=3]
 
 [ext_resource type="Script" path="res://scripts/world.gd" id="1_world"]
 [ext_resource type="PackedScene" path="res://scenes/player/Player.tscn" id="2_player"]
@@ -18,6 +18,8 @@
 [ext_resource type="Script" path="res://scripts/unit_hud.gd" id="16_unit_hud"]
 [ext_resource type="Script" path="res://scripts/fortifications_world.gd" id="17_fortifications_world"]
 [ext_resource type="Script" path="res://scripts/fortifications_hud.gd" id="18_fortifications_hud"]
+[ext_resource type="Script" path="res://scripts/meta_progression_manager.gd" id="19_meta_progression"]
+[ext_resource type="Script" path="res://scripts/meta_progression_hud.gd" id="20_meta_hud"]
 
 [node name="Main" type="Node3D"]
 script = ExtResource("1_world")
@@ -31,6 +33,9 @@ script = ExtResource("6_settlement_manager")
 
 [node name="ProgressionManager" type="Node" parent="."]
 script = ExtResource("10_progression")
+
+[node name="MetaProgressionManager" type="Node" parent="."]
+script = ExtResource("19_meta_progression")
 
 [node name="UnitManager" type="Node3D" parent="."]
 script = ExtResource("13_units")
@@ -109,6 +114,16 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 script = ExtResource("18_fortifications_hud")
+
+[node name="MetaProgressionHUD" type="Control" parent="UI"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("20_meta_hud")
 
 [node name="MobileJoystick" type="Control" parent="UI"]
 offset_left = 24.0

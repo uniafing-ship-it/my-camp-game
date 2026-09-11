@@ -12,6 +12,7 @@ var last_activity := "Собери отряд для защиты лагеря."
 var _resource_manager = null
 var _settlement_manager = null
 var _progression_manager = null
+var _meta_progression_manager = null
 var _spawn_serial := 0
 var _heal_accum := 0.0
 
@@ -130,36 +131,42 @@ func _spawn_unit(kind: String) -> void:
 	add_child(unit)
 
 func _configure_unit(unit: Node, kind: String) -> void:
+	_bind_managers()
 	var hp_bonus := _unit_hp_bonus()
 	var training := _settlement_level("training_ground")
+	var flat_damage := _meta_flat_damage_bonus()
+	var damage_multiplier := _meta_damage_multiplier()
 	match kind:
 		"foot":
 			unit.max_health = 48 + hp_bonus
-			unit.attack_damage = 12 + training * 6
+			unit.attack_damage = maxi(1, int(round(float(12 + training * 6 + flat_damage) * damage_multiplier)))
 			unit.attack_range = 1.8
 			unit.attack_interval = maxf(0.4, 0.82 * pow(0.95, training))
 		"hunter":
 			unit.max_health = 36 + hp_bonus
-			unit.attack_damage = 9 + int(floor(float(training) / 2.0)) * 4
+			unit.attack_damage = maxi(1, int(round(float(9 + int(floor(float(training) / 2.0)) * 4 + flat_damage) * damage_multiplier)))
 			unit.attack_range = 7.2
 			unit.attack_interval = 1.15
 			unit.scan_radius = 21.0
 		"dog":
 			unit.max_health = 30 + hp_bonus
-			unit.attack_damage = 10 + maxi(0, _settlement_level("kennel") - 1) * 4 + _dog_damage_bonus()
+			unit.attack_damage = maxi(1, int(round(float(10 + maxi(0, _settlement_level("kennel") - 1) * 4 + _dog_damage_bonus() + flat_damage) * damage_multiplier)))
 			unit.move_speed = 5.0
 			unit.attack_range = 1.4
 			unit.attack_interval = 0.65
 
 func _refresh_existing_units() -> void:
 	_bind_managers()
-	for unit in get_tree().get_nodes_in_group("camp_defenders"):
+	for unit in get_tree().get_nodes_in_group("camp_defenders") + get_tree().get_nodes_in_group("expedition_reserved_units"):
 		if unit == null or not is_instance_valid(unit):
 			continue
 		var old_health := int(unit.health)
 		_configure_unit(unit, str(unit.unit_kind))
 		unit.health = mini(old_health, int(unit.max_health))
 	_emit()
+
+func refresh_meta_effects() -> void:
+	_refresh_existing_units()
 
 func _on_unit_died(kind: String, _unit: Node) -> void:
 	counts[kind] = maxi(0, get_count(kind) - 1)
@@ -178,7 +185,7 @@ func _on_settlement_imported(_snapshot: Dictionary) -> void:
 	_refresh_existing_units()
 
 func _clear_units() -> void:
-	for node in get_tree().get_nodes_in_group("camp_defenders"):
+	for node in get_tree().get_nodes_in_group("camp_defenders") + get_tree().get_nodes_in_group("expedition_reserved_units"):
 		if node != null and is_instance_valid(node):
 			node.queue_free()
 
@@ -188,6 +195,12 @@ func _unit_hp_bonus() -> int:
 
 func _dog_damage_bonus() -> int:
 	return int(_progression_manager.get_dog_damage_bonus()) if _progression_manager != null and _progression_manager.has_method("get_dog_damage_bonus") else 0
+
+func _meta_flat_damage_bonus() -> int:
+	return int(_meta_progression_manager.get_flat_damage_bonus()) if _meta_progression_manager != null and _meta_progression_manager.has_method("get_flat_damage_bonus") else 0
+
+func _meta_damage_multiplier() -> float:
+	return float(_meta_progression_manager.get_damage_multiplier()) if _meta_progression_manager != null and _meta_progression_manager.has_method("get_damage_multiplier") else 1.0
 
 func _has_research(research_id: String) -> bool:
 	_bind_managers()
@@ -204,6 +217,8 @@ func _bind_managers() -> void:
 		_settlement_manager = get_tree().get_first_node_in_group("settlement_manager")
 	if _progression_manager == null or not is_instance_valid(_progression_manager):
 		_progression_manager = get_tree().get_first_node_in_group("progression_manager")
+	if _meta_progression_manager == null or not is_instance_valid(_meta_progression_manager):
+		_meta_progression_manager = get_tree().get_first_node_in_group("meta_progression_manager")
 
 func _set_activity(text: String) -> void:
 	last_activity = text

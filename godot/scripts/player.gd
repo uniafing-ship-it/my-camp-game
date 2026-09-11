@@ -95,6 +95,12 @@ func perform_attack() -> bool:
 	var hit := false
 	if nearest != null and nearest.has_method("take_damage"):
 		var damage := maxi(1, int(round(float(attack_damage) / 3.0))) if wildlife_target else attack_damage
+		var meta = get_tree().get_first_node_in_group("meta_progression_manager")
+		if meta != null:
+			if meta.has_method("get_flat_damage_bonus"):
+				damage += maxi(0, int(meta.get_flat_damage_bonus()))
+			if meta.has_method("get_damage_multiplier"):
+				damage = maxi(1, int(round(float(damage) * float(meta.get_damage_multiplier()))))
 		nearest.take_damage(damage, global_position); hit = true
 	attacked.emit(hit)
 	return hit

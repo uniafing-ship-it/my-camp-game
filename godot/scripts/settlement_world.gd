@@ -25,9 +25,10 @@ func _bind() -> void:
 		_settlement_manager.connect("building_upgraded", Callable(self, "_on_building_changed"))
 	if _settlement_manager.has_signal("worker_recruited"):
 		_settlement_manager.connect("worker_recruited", Callable(self, "_on_worker_recruited"))
+	if _settlement_manager.has_signal("state_imported"):
+		_settlement_manager.connect("state_imported", Callable(self, "_on_state_imported"))
 	_build_all_plots()
-	for i in range(int(_settlement_manager.worker_count)):
-		_spawn_worker(i + 1)
+	_sync_workers_to_count()
 
 func _build_all_plots() -> void:
 	for building_id in BUILDING_POSITIONS.keys():
@@ -40,6 +41,26 @@ func _on_building_changed(building_id: String, level: int) -> void:
 
 func _on_worker_recruited(worker_id: int) -> void:
 	_spawn_worker(worker_id)
+
+func _on_state_imported(_snapshot: Dictionary) -> void:
+	_sync_workers_to_count()
+
+func _sync_workers_to_count() -> void:
+	if _settlement_manager == null:
+		return
+	var desired := int(_settlement_manager.worker_count)
+	var present: Dictionary = {}
+	for child in get_children():
+		if child == null or not is_instance_valid(child) or not (child is CampWorker):
+			continue
+		var worker_id := int(child.worker_id)
+		if worker_id <= 0 or worker_id > desired:
+			child.queue_free()
+		else:
+			present[worker_id] = true
+	for worker_id in range(1, desired + 1):
+		if not present.has(worker_id):
+			_spawn_worker(worker_id)
 
 func _rebuild_building(building_id: String, level: int) -> void:
 	if not BUILDING_POSITIONS.has(building_id):
