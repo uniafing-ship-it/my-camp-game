@@ -57,10 +57,11 @@ func _physics_process(delta: float) -> void:
 		velocity = Vector3.ZERO
 		return
 	var input_vec := Vector2.ZERO
-	if Input.is_key_pressed(KEY_A) or Input.is_key_pressed(KEY_LEFT): input_vec.x -= 1.0
-	if Input.is_key_pressed(KEY_D) or Input.is_key_pressed(KEY_RIGHT): input_vec.x += 1.0
-	if Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP): input_vec.y -= 1.0
-	if Input.is_key_pressed(KEY_S) or Input.is_key_pressed(KEY_DOWN): input_vec.y += 1.0
+	# Physical WASD keeps movement working with EN/RU and other keyboard layouts in Web builds.
+	if Input.is_physical_key_pressed(KEY_A) or Input.is_key_pressed(KEY_LEFT): input_vec.x -= 1.0
+	if Input.is_physical_key_pressed(KEY_D) or Input.is_key_pressed(KEY_RIGHT): input_vec.x += 1.0
+	if Input.is_physical_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP): input_vec.y -= 1.0
+	if Input.is_physical_key_pressed(KEY_S) or Input.is_key_pressed(KEY_DOWN): input_vec.y += 1.0
 	if input_vec.length() > 1.0: input_vec = input_vec.normalized()
 	if _joystick and _joystick.has_method("get_vector"):
 		var mobile_vec: Vector2 = _joystick.get_vector()
@@ -81,7 +82,7 @@ func _physics_process(delta: float) -> void:
 		desired_dir = right * input_vec.x + forward * -input_vec.y
 	if desired_dir.length_squared() > 1.0: desired_dir = desired_dir.normalized()
 
-	var target_speed := sprint_speed if Input.is_key_pressed(KEY_SHIFT) else move_speed
+	var target_speed := sprint_speed if Input.is_physical_key_pressed(KEY_SHIFT) else move_speed
 	var target_velocity := desired_dir * target_speed
 	velocity.x = move_toward(velocity.x, target_velocity.x, acceleration * delta)
 	velocity.z = move_toward(velocity.z, target_velocity.z, acceleration * delta)
@@ -165,7 +166,7 @@ func import_state(data: Dictionary) -> void:
 		_yaw = float(data.get("yaw", _yaw))
 		_pitch = clamp(float(data.get("pitch", _pitch)), deg_to_rad(-48.0), deg_to_rad(18.0))
 		camera_pivot.rotation = Vector3(_pitch, _yaw, 0)
-	health_changed.emit(health, max_health)
+	health_changed.emit(health,max_health)
 
 func _die() -> void:
 	if _dead: return
@@ -214,7 +215,7 @@ func _process_resource_gameplay() -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
-		if event.keycode == KEY_SPACE or event.keycode == KEY_F:
+		if event.keycode == KEY_SPACE or event.physical_keycode == KEY_F:
 			request_attack()
 		return
 	if legacy_camera_enabled:
