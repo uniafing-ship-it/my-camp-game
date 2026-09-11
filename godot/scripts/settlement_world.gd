@@ -194,10 +194,12 @@ func _build_label(root: Node3D, building_id: String, level: int) -> void:
 	root.add_child(label)
 
 func _spawn_worker(worker_id: int) -> void:
-	var worker_name := "Worker_%d" % worker_id
-	var existing = get_node_or_null(worker_name)
-	if existing != null and is_instance_valid(existing):
+	if not is_inside_tree():
 		return
+	var worker_name := "Worker_%d" % worker_id
+	for child in get_children():
+		if child != null and is_instance_valid(child) and str(child.name) == worker_name:
+			return
 	var worker = WorkerScript.new()
 	worker.process_thread_group = Node.PROCESS_THREAD_GROUP_MAIN_THREAD
 	worker.name = worker_name
