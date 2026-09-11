@@ -12,6 +12,7 @@ on:
       - migration/godot-stage-7-units-wildlife
       - migration/godot-stage-8-fortifications
       - migration/godot-stage-9-meta-progression
+      - migration/godot-stage-10-settlement-parity
     paths:
       - 'godot/**'
       - '.github/workflows/godot-foundation.yml'
@@ -61,6 +62,19 @@ jobs:
         with:
           name: stage9-test-log
           path: stage9-test.log
+          if-no-files-found: error
+          retention-days: 7
+      - name: Stage 10 settlement parity tests
+        shell: bash
+        run: |
+          set -o pipefail
+          godot --headless --path godot --script res://tests/stage10_settlement_parity.gd 2>&1 | tee stage10-test.log
+      - name: Upload Stage 10 diagnostic log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stage10-test-log
+          path: stage10-test.log
           if-no-files-found: error
           retention-days: 7
       - name: Boot main scene
