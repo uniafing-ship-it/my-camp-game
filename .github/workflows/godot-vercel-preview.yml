@@ -32,6 +32,9 @@ jobs:
       - name: Import project
         run: godot --headless --path godot --editor --quit
 
+      - name: Boot main scene
+        run: godot --headless --path godot --quit-after 8
+
       - name: Export Godot Web build
         run: |
           rm -rf godot/build/web
