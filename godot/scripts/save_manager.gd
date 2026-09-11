@@ -35,6 +35,7 @@ func save_game() -> bool:
 	var settlement=get_tree().get_first_node_in_group("settlement_manager")
 	var progression=get_tree().get_first_node_in_group("progression_manager")
 	var meta=get_tree().get_first_node_in_group("meta_progression_manager")
+	var parity=get_tree().get_first_node_in_group("stage10_settlement_parity")
 	var wave=get_tree().get_first_node_in_group("raid_manager")
 	var player=get_tree().get_first_node_in_group("player_combat")
 	var units=get_tree().get_first_node_in_group("unit_manager")
@@ -52,6 +53,8 @@ func save_game() -> bool:
 	}
 	if meta != null and meta.has_method("export_state"):
 		data["meta"] = meta.export_state()
+	if parity != null and parity.has_method("export_state"):
+		data["stage10"] = parity.export_state()
 	var file:=FileAccess.open(SAVE_PATH,FileAccess.WRITE)
 	if file==null:
 		save_completed.emit(false,last_save_unix); return false
@@ -69,6 +72,7 @@ func load_game() -> bool:
 	var settlement=get_tree().get_first_node_in_group("settlement_manager")
 	var progression=get_tree().get_first_node_in_group("progression_manager")
 	var meta=get_tree().get_first_node_in_group("meta_progression_manager")
+	var parity=get_tree().get_first_node_in_group("stage10_settlement_parity")
 	var wave=get_tree().get_first_node_in_group("raid_manager")
 	var player=get_tree().get_first_node_in_group("player_combat")
 	var units=get_tree().get_first_node_in_group("unit_manager")
@@ -81,6 +85,8 @@ func load_game() -> bool:
 	player.import_state(data.get("player",{}))
 	if meta != null and meta.has_method("import_state"):
 		meta.import_state(data.get("meta",{}))
+	if parity != null and parity.has_method("import_state"):
+		parity.import_state(data.get("stage10",{}))
 	last_save_unix=int(data.get("timestamp",0)); return true
 
 func delete_save() -> bool:
