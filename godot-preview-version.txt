@@ -1,0 +1,3 @@
+Godot Stage 10 preview
+Physical WASD fix source commit: 8d64c1149f14586cee55852e3f9dfd70684d7efe
+Web export commit: 2a9897cb0b5f676de87f2d5b3877ca575ad55e73
